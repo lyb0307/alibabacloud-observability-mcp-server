@@ -7,6 +7,8 @@ from alibabacloud_tea_openapi import models as open_api_models
 from alibabacloud_cms20240330.client import Client
 import argparse
 
+from toolloader import ToolLoader
+
     
 
 @staticmethod
@@ -94,18 +96,12 @@ def create_lifespan(access_key_id: str, access_key_secret: str):
         yield {"sls_client": sls_client}    
     return lifespan
 
-def calculate_sum(ctx: Context,a:int=Field(...,description="the first integer2"),b:int=Field(default=2,description="the second integer")) -> int:
-    """
-    calculate the sum of two integers
-    - a: the first integer
-    - b: the second integer
-    """
-    return a+b
-
 def server(access_key_id: str, access_key_secret: str, transport: Literal["stdio", "sse"] = "stdio"):
      # create server instance and run
     mcp = FastMCP(name="mcp_aliyun_observability_server",lifespan=create_lifespan(access_key_id,access_key_secret))
-    mcp.add_tool(calculate_sum)
+    # 使用工具加载器
+    loader = ToolLoader(mcp)
+    loader.load_tools()
     mcp.run(transport)
     
 def main():
@@ -124,4 +120,7 @@ def main():
             "3. environment variables: ALIYUN_ACCESS_KEY_ID and ALIYUN_ACCESS_KEY_SECRET"
         )
     server(access_key_id, access_key_secret, args.transport)
+    
+if __name__ == "__main__":
+    server(access_key_id="ss", access_key_secret="ss", transport="sse")
     
