@@ -14,8 +14,11 @@ def tool():
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-        
+            try:
+                result = func(*args, **kwargs)
+                return {"success": True, "result": result}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
         # 添加__mcp_tool__属性，使ToolLoader能够识别
         wrapper.__mcp_tool__ = True
         return wrapper

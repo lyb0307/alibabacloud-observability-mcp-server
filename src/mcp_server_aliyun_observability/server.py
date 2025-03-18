@@ -1,25 +1,49 @@
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import AsyncIterator, Literal, Optional
 from mcp.server import FastMCP
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
 from alibabacloud_tea_openapi import models as open_api_models
-from alibabacloud_cms20240330.client import Client
+from alibabacloud_sls20201230.client import Client
 import argparse
 
 from toolloader import ToolLoader
 
     
+class SLSClientWrapper:
+    """
+    A wrapper for aliyun client
+    """
+    def __init__(self, access_key_id: str, access_key_secret: str):
+        self.access_key_id = access_key_id
+        self.access_key_secret = access_key_secret
+        
+    def with_region(self, region: str) -> Client:
+        config = open_api_models.Config(
+            access_key_id=self.access_key_id,
+            access_key_secret=self.access_key_secret,
+        )
+        config.endpoint = f"{region}.log.aliyuncs.com"
+        return Client(config)
+    
+class ARMSClientWrapper:
+    """
+    A wrapper for aliyun client
+    """
+    def __init__(self, access_key_id: str, access_key_secret: str):
+        self.access_key_id = access_key_id
+        self.access_key_secret = access_key_secret
+        
+    def with_region(self, region: str) -> Client:
+        config = open_api_models.Config(
+            access_key_id=self.access_key_id,
+            access_key_secret=self.access_key_secret,
+        )
+        config.endpoint = f"https://{region}.aliyuncs.com"
+        return Client(config)
 
-@staticmethod
-def create_sls_client(access_key_id: str, access_key_secret: str) -> Client:
-    config = open_api_models.Config(
-        access_key_id=access_key_id,
-        access_key_secret=access_key_secret,
-    )
-    config.endpoint = "https://sls.cn-shanghai.aliyuncs.com"
-    return Client(config)
-
+    
 def create_parser() -> argparse.ArgumentParser:
     """create command line argument parser"""
     parser = argparse.ArgumentParser(description='aliyun observability mcp server')
@@ -87,14 +111,14 @@ def get_credentials(args: argparse.Namespace) -> tuple[Optional[str], Optional[s
     
     return access_key_id, access_key_secret
 
-
-
 def create_lifespan(access_key_id: str, access_key_secret: str):
     @asynccontextmanager
     async def lifespan(fastmcp: FastMCP) -> AsyncIterator[dict]:
-        sls_client = create_sls_client(access_key_id, access_key_secret)
-        yield {"sls_client": sls_client}    
+        sls_client = SLSClientWrapper(access_key_id, access_key_secret)
+        arms_client = ARMSClientWrapper(access_key_id, access_key_secret=access_key_secret)
+        yield {"sls_client": sls_client, "arms_client": arms_client}
     return lifespan
+
 
 def server(access_key_id: str, access_key_secret: str, transport: Literal["stdio", "sse"] = "stdio"):
      # create server instance and run
@@ -120,7 +144,3 @@ def main():
             "3. environment variables: ALIYUN_ACCESS_KEY_ID and ALIYUN_ACCESS_KEY_SECRET"
         )
     server(access_key_id, access_key_secret, args.transport)
-    
-if __name__ == "__main__":
-    server(access_key_id="ss", access_key_secret="ss", transport="sse")
-    
