@@ -1,0 +1,19 @@
+{
+  "version": "1",
+  "packages": {
+    "mcp": {
+      "version": "1.0.0",
+      "markers": null,
+      "extras": [],
+      "dependencies": [
+        "pydantic"
+      ]
+    },
+    "pydantic": {
+      "version": "2.5.2",
+      "markers": null,
+      "extras": [],
+      "dependencies": []
+    }
+  }
+} 
