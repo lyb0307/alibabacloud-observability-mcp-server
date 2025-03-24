@@ -70,4 +70,4 @@ class ToolLoader:
                 ):
                     self.mcp_server.add_tool(attr_value)
                     self.loaded_tools.add(attr_name)
-                    print(f"已加载工具: {attr_name}")
+                    print(f"success to load tool: {attr_name}")

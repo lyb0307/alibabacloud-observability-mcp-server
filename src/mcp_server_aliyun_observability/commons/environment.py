@@ -1,4 +1,0 @@
-import os
-
-ACCESS_KEY_ID = os.getenv("ALIYUN_ACCESS_KEY_ID")
-ACCESS_KEY_SECRET = os.getenv("ALIYUN_ACCESS_KEY_SECRET")

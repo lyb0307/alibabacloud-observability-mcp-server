@@ -24,15 +24,9 @@ def list_all_regions(ctx: Context) -> str:
 
 
 @tool()
-def get_current_time(
-    ctx: Context,
-    timezone: str = Field(
-        default="Asia/Shanghai",
-        description="timezone,default is Asia/Shanghai,you can choose any timezone from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones",
-    ),
-) -> str:
+def get_current_time(ctx: Context) -> str:
     """
     Get current time,format: the unix timestamp in seconds
     支持时区参数，默认是东八区
     """
-    return int(datetime.now(timezone).timestamp())
+    return int(datetime.now().timestamp())
