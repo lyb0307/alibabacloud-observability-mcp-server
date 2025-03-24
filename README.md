@@ -7,42 +7,64 @@ This is a MCP server that can be used to connect to aliyun observability. Includ
 
 ### Tools
 
-#### Metadata Tools
+#### SLS Tools
+Tookit for sls service
 
-- `get sls index`
+- `get_sls_logstore_index`
     - Get the index info of aliyun sls logstore
     - Input:
         - `project` (string): The project name of aliyun sls
         - `logstore` (string): The logstore name of aliyun sls
 
-#### Generate Tools
 
-- `text to sql`
-    - Convert a natural language query to a sls sql query
+
+#### CMS Tools
+Toolkit for cms2.0
+
+- `list_user_workspaces`
+    - Get the workspace list of aliyun cms
     - Input:
-        - `query` (string): The natural language query
-        - `project` (string): The project name of aliyun sls
-        - `logstore` (string): The logstore name of aliyun sls
+        - `region_id` (string): The region id of aliyun cms
     - Returns:
-        - `sql` (string): The sql query
+        - `workspaces` (list): The workspace list of aliyun cms
 
-#### Query Tools
-- `execute sls query`
-    - Execute a query on aliyun sls
+- `execute_cms_query`
+    - Execute a query on aliyun cms
     - Input:
+        - `workspace_name` (string): The workspace name of aliyun cms
+        - `from_timestamp` (int): The from timestamp of the query
+        - `to_timestamp` (int): The to timestamp of the query
         - `query` (string): The query to execute
-        - `project` (string): The project name of aliyun sls
-        - `logstore` (string): The logstore name of aliyun sls
+        - `region_id` (string): The region id of aliyun cms
     - Returns:
         - `result` (string): The data of the query
 
 
-#### Analyze Tools
+### Common Tools
 
-- `analyze observability trace `
-    - Analyze a trace
-    - Input:
-        - `trace_id` (string): The trace id of the trace to analyze
-        - `type` (string): slow or error trace analysis
+- `list_all_regions`
+    - Get the all region list of aliyun
     - Returns:
-        - `result` (string): The result of the analysis
+        - `regions` (list): The region list of aliyun
+
+- `get_current_time`
+    - Get the current time
+    - Returns:
+        - `time` (string): The current time,format: YYYY-MM-DD HH:MM:SS
+
+
+### How to run
+Current,the mcp server not deploy to pip,so you need to run it from source code.
+
+#### SSE Mode
+
+```bash
+python -m mcp_server_aliyun_observability.server --transport sse --access-key-id <your_access_key_id> --access-key-secret <your_access_key_secret> --transport-port <port>
+```
+
+#### Stdio Mode
+
+```bash
+python -m mcp_server_aliyun_observability.server --transport stdio --access-key-id <your_access_key_id> --access-key-secret <your_access_key_secret>
+
+
