@@ -58,7 +58,7 @@ def execute_sls_query(
     query: str = Field(..., description="query"),
     from_timestamp: int = Field(..., description="from timestamp,unit is second"),
     to_timestamp: int = Field(..., description="to timestamp,unit is second"),
-    limit: int = Field(..., description="limit,max is 100", ge=1, le=100),
+    limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
 ) -> dict:
     """
     1. execute the sls query on the log store
@@ -120,9 +120,6 @@ def text_to_sls_query(
     request.params = params
     tool_response: CallAiToolsResponse = sls_client.call_ai_tools(request)
     data = tool_response.body
-    """
-     "------response------\n{\n  \"type\":\"sql\",\n  \"answer\": \"${answer}\",\n  \"nextActions\": [],\n  \"scene_sql\":\"${sql}\",\n  \"scene_message\":\"${message}\",\n  \"scene_from_time\":\"${from_time}\",\n  \"scene_to_time\":\"${to_time}\"\n}\n------answer------\n此查询执行以下步骤：<br>1. 筛选出主题为'oss_access_log'且桶(bucket)为'hgame-va'的日志。<br>2. 按天对齐时间字段，并按client_ip分组。<br>3. 计算每天每个client_ip的数量。<br>4. 按天和ip_num降序排序。<br>注意，SLS默认限制输出结果100行，您可以通过添加LIMIT N来限制最大结果行数。\n------sql------\n* | SELECT date_trunc('day', __time__) AS day, client_ip, COUNT(client_ip) AS ip_num FROM log WHERE __topic__ = 'oss_access_log' AND bucket = 'hgame-va' GROUP BY day, client_ip ORDER BY day, ip_num DESC\n------message------\n此查询执行以下步骤：<br>1. 筛选出主题为'oss_access_log'且桶(bucket)为'hgame-va'的日志。<br>2. 按天对齐时间字段，并按client_ip分组。<br>3. 计算每天每个client_ip的数量。<br>4. 按天和ip_num降序排序。<br>注意，SLS默认限制输出结果100行，您可以通过添加LIMIT N来限制最大结果行数。\n------from_time------\n1742806350\n------to_time------\n1742807250\n------end------"
-    """
     if "------answer------\n" in data:
         data = data.split("------answer------\n")[1]
     return data

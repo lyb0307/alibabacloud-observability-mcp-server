@@ -31,24 +31,6 @@ class SLSClientWrapper:
         return SLSClient(config)
 
 
-class ARMSClientWrapper:
-    """
-    A wrapper for aliyun client
-    """
-
-    def __init__(self, access_key_id: str, access_key_secret: str):
-        self.access_key_id = access_key_id
-        self.access_key_secret = access_key_secret
-
-    def with_region(self, region: str) -> SLSClient:
-        config = open_api_models.Config(
-            access_key_id=self.access_key_id,
-            access_key_secret=self.access_key_secret,
-        )
-        config.endpoint = f"https://{region}.aliyuncs.com"
-        return SLSClient(config)
-
-
 class CMSClientWrapper:
     """
     A wrapper for aliyun client
@@ -140,15 +122,11 @@ def create_lifespan(access_key_id: str, access_key_secret: str):
     @asynccontextmanager
     async def lifespan(fastmcp: FastMCP) -> AsyncIterator[dict]:
         sls_client = SLSClientWrapper(access_key_id, access_key_secret)
-        arms_client = ARMSClientWrapper(
-            access_key_id, access_key_secret=access_key_secret
-        )
         cms_client = CMSClientWrapper(
             access_key_id, access_key_secret=access_key_secret
         )
         yield {
             "sls_client": sls_client,
-            "arms_client": arms_client,
             "cms_client": cms_client,
         }
 
