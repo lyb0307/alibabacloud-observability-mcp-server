@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from mcp.server.fastmcp import Context, FastMCP
+from pydantic import Field
 from toolloader import tool
 
 
@@ -23,8 +24,15 @@ def list_all_regions(ctx: Context) -> str:
 
 
 @tool()
-def get_current_time(ctx: Context) -> str:
+def get_current_time(
+    ctx: Context,
+    timezone: str = Field(
+        default="Asia/Shanghai",
+        description="timezone,default is Asia/Shanghai,you can choose any timezone from https://en.wikipedia.org/wiki/List_of_tz_database_time_zones",
+    ),
+) -> str:
     """
-    Get current time,format: YYYY-MM-DD HH:MM:SS
+    Get current time,format: the unix timestamp in seconds
+    支持时区参数，默认是东八区
     """
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return int(datetime.now(timezone).timestamp())
