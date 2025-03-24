@@ -10,3 +10,6 @@ __pycache__
 .env
 .vscode
 .idea
+dist/*
+build
+.venv
