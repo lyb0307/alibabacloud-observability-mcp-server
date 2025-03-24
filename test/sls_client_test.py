@@ -24,5 +24,7 @@ if __name__ == "__main__":
         "logstore": "copilot-sql-generator-eval-log",
         "sys.query": "* and __topic__: oss_access_log and bucket: hgame-va | select client_ip, count(client_ip) as ip_num group by client_ip order by ip_num desc  在此基础上，按天显示",
     }
-    response = client.call_ai_tools(request)
-    print(response)
+    response = client.call_ai_tools(request).body
+    if "------answer------\n" in response:
+        data = response.split("------answer------\n")[1]
+    print(data)
