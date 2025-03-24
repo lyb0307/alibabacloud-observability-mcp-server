@@ -11,11 +11,11 @@ from alibabacloud_sls20201230.models import (
     IndexJsonKey,
     IndexKey,
 )
-from alibabacloud_tea_openapi import models as open_api_models
 from mcp.server.fastmcp import Context
 from mcp.types import TextContent
 from pydantic import Field
-from toolloader import ToolConfig, tool
+
+from mcp_server_aliyun_observability.toolloader import tool
 
 """
 get_log_store_index

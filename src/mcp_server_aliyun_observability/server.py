@@ -4,13 +4,18 @@ from dataclasses import dataclass
 from typing import Any, AsyncIterator, Literal, Optional
 
 import mcp
-from alibabacloud_cms20240330.client import Client as CMSClient
-from alibabacloud_sls20201230.client import Client as SLSClient
+from alibabacloud_cms20240330.client import (
+    Client as CMSClient,
+)
+from alibabacloud_sls20201230.client import (
+    Client as SLSClient,
+)
 from alibabacloud_tea_openapi import models as open_api_models
 from mcp.server import FastMCP
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
-from toolloader import ToolLoader
+
+from mcp_server_aliyun_observability.toolloader import ToolLoader
 
 
 class SLSClientWrapper:

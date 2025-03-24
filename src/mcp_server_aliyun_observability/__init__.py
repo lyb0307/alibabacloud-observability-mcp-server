@@ -1,8 +1,16 @@
+import os
 import sys
+
+# 添加libs目录到Python导入路径
+current_dir = os.path.dirname(os.path.abspath(__file__))
+libs_path = os.path.join(current_dir, "libs")
+if libs_path not in sys.path:
+    sys.path.insert(0, libs_path)
 
 import click
 import dotenv
-from server import server
+
+from mcp_server_aliyun_observability.server import server
 
 dotenv.load_dotenv()
 

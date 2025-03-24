@@ -11,7 +11,8 @@ from alibabacloud_cms20240330.models import (
 )
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
-from toolloader import tool
+
+from mcp_server_aliyun_observability.toolloader import tool
 
 """
 get user workspace
