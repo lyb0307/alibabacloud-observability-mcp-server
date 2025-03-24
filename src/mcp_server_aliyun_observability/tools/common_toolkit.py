@@ -17,6 +17,7 @@ def list_all_regions(ctx: Context) -> str:
             "cn-beijing": "北京",
             "cn-shanghai": "上海",
             "cn-shenzhen": "深圳",
+            "cn-qingdao": "青岛",
         }
     except Exception as e:
         print(f"获取区域列表失败: {str(e)}")

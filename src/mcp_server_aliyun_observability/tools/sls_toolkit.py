@@ -110,11 +110,12 @@ def text_to_sls_query(
         region_id
     )
     request: CallAiToolsRequest = CallAiToolsRequest()
-    request.tool_name = "text_to_sls_query"
+    request.tool_name = "text_to_sql"
+    request.region_id = region_id
     params: dict[str, Any] = {
         "project": project,
         "log_store": log_store,
-        "text": text,
+        "sys.query": text,
     }
     request.params = params
     tool_response: CallAiToolsResponse = sls_client.call_ai_tools(request)
