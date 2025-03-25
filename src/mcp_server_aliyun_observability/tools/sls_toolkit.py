@@ -23,7 +23,7 @@ get_log_store_index
 
 
 @tool()
-def get_log_store_schema(
+def get_sls_log_store_schema(
     ctx: Context,
     project: str = Field(..., description="sls project name"),
     log_store: str = Field(..., description="sls log store name"),
@@ -50,7 +50,7 @@ def get_log_store_schema(
 
 
 @tool()
-def execute_sls_query(
+def execute_sls_log_store_query(
     ctx: Context,
     project: str = Field(..., description="sls project name"),
     log_store: str = Field(..., description="sls log store name"),
@@ -92,10 +92,10 @@ def parse_json_keys(json_keys: dict[str, IndexJsonKey]) -> dict[str, dict[str, s
 
 
 @tool()
-def text_to_sls_query(
+def text_to_sls_log_store_query(
     ctx: Context,
     text: str = Field(
-        ..., description="the natural language text to generate sls query"
+        ..., description="the natural language text to generate sls log store query"
     ),
     region_id: str = Field(..., description="region id"),
     project: str = Field(..., description="sls project name"),

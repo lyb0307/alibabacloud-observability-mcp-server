@@ -16,12 +16,25 @@ Tookit for sls service
         - `project` (string): The project name of aliyun sls
         - `logstore` (string): The logstore name of aliyun sls
 
+- `execute_log_store_query`
+    - Execute a query on aliyun sls logstore
+    - Input:
+        - `project` (string): The project name of aliyun sls
+        - `logstore` (string): The logstore name of aliyun sls
+        - `query` (string): The query to execute
 
+- `text_to_sls_log_store_query`
+    - Convert the natural language text to sls log store query
+    - Input:
+        - `text` (string): The natural language text to generate sls log store query
+        - `region_id` (string): The region id of aliyun sls
+        - `project` (string): The project name of aliyun sls
+        - `logstore` (string): The logstore name of aliyun sls
 
 #### CMS Tools
 Toolkit for cms2.0
 
-- `list_user_workspaces`
+- `list_cms_user_workspaces`
     - Get the workspace list of aliyun cms
     - Input:
         - `region_id` (string): The region id of aliyun cms
@@ -47,10 +60,14 @@ Toolkit for cms2.0
     - Returns:
         - `regions` (list): The region list of aliyun
 
-- `get_current_time`
-    - Get the current time
-    - Returns:
-        - `time` (string): The current time,format: YYYY-MM-DD HH:MM:SS
+
+### How to add new tools
+
+1. Add the tool function to the `tools` folder
+2. Add the @tool decorator to the tool function
+3. Can use Field to define the input and output of the tool function
+4. Can use Context to get the mcp context, for example the client of sls,arms,cms,etc.
+
 
 
 ### How to run

@@ -20,7 +20,7 @@ get user workspace
 
 
 @tool()
-def list_user_workspaces(
+def list_cms_user_workspaces(
     ctx: Context, region_id: str = Field(..., description="region id")
 ) -> list[str]:
     """
