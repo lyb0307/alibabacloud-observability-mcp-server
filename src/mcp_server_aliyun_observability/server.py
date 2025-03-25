@@ -33,7 +33,6 @@ class SLSClientWrapper:
             access_key_secret=self.access_key_secret,
         )
         config.endpoint = endpoint or f"{region}.log.aliyuncs.com"
-        print("jheee")
         return SLSClient(config)
 
 
