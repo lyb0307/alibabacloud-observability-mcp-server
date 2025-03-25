@@ -32,8 +32,8 @@ class SLSClientWrapper:
             access_key_id=self.access_key_id,
             access_key_secret=self.access_key_secret,
         )
-        config.endpoint = "pub-cn-hangzhou-staging-share.log.aliyuncs.com"
-        print(config.endpoint)
+        config.endpoint = endpoint or f"{region}.log.aliyuncs.com"
+        print("jheee")
         return SLSClient(config)
 
 

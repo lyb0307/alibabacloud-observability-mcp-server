@@ -107,15 +107,14 @@ def text_to_sls_log_store_query(
     3. the tool will return the sls query string, you can use the execute_sls_query tool to execute the query
     """
     sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region(
-        region_id
+        region_id, endpoint="pub-cn-hangzhou-staging-share.log.aliyuncs.com"
     )
-    print("hello2")
     request: CallAiToolsRequest = CallAiToolsRequest()
     request.tool_name = "text_to_sql"
     request.region_id = region_id
     params: dict[str, Any] = {
         "project": project,
-        "log_store": log_store,
+        "logstore": log_store,
         "sys.query": text,
     }
     request.params = params

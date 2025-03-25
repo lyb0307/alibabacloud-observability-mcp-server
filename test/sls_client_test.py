@@ -6,19 +6,22 @@ from alibabacloud_sls20201230.models import CallAiToolsRequest
 from alibabacloud_tea_openapi import models as open_api_models
 
 dotenv.load_dotenv()
+from mcp_server_aliyun_observability.server import SLSClientWrapper
 
 if __name__ == "__main__":
-    config = open_api_models.Config(
-        access_key_id=os.getenv("ALIYUN_ACCESS_KEY_ID"),
-        access_key_secret=os.getenv("ALIYUN_ACCESS_KEY_SECRET"),
-    )
-    config.endpoint = "pub-cn-hangzhou-staging-share.log.aliyuncs.com"
-
     project = "sls-console-log"
     logstore = "cn-service-ml-access"
-    client = SLSClient(config)
-    response = client.list_ai_tools()
+    print(os.getenv("ALIYUN_ACCESS_KEY_ID"))
+    client = SLSClientWrapper(
+        access_key_id=os.getenv("ALIYUN_ACCESS_KEY_ID"),
+        access_key_secret=os.getenv("ALIYUN_ACCESS_KEY_SECRET"),
+    ).with_region("cn-hangzhou", "cn-hangzhou.log.aliyuncs.com")
+    response = client.get_index(project, logstore)
     print(response)
+    client = SLSClientWrapper(
+        access_key_id=os.getenv("ALIYUN_ACCESS_KEY_ID"),
+        access_key_secret=os.getenv("ALIYUN_ACCESS_KEY_SECRET"),
+    ).with_region("cn-hangzhou", "pub-cn-hangzhou-staging-share.log.aliyuncs.com")
     request = CallAiToolsRequest()
     request.tool_name = "text_to_sql"
     request.region_id = "cn-hangzhou"
