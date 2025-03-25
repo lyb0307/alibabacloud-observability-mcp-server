@@ -13,18 +13,21 @@ if __name__ == "__main__":
         access_key_secret=os.getenv("ALIYUN_ACCESS_KEY_SECRET"),
     )
     config.endpoint = "pub-cn-hangzhou-staging-share.log.aliyuncs.com"
+
+    project = "sls-console-log"
+    logstore = "cn-service-ml-access"
     client = SLSClient(config)
     response = client.list_ai_tools()
     print(response)
-    # request = CallAiToolsRequest()
-    # request.tool_name = "text_to_sql"
-    # request.region_id = "cn-chengdu"
-    # request.params = {
-    #     "project": "copilot-sql-generator-eval",
-    #     "logstore": "copilot-sql-generator-eval-log",
-    #     "sys.query": "* and __topic__: oss_access_log and bucket: hgame-va | select client_ip, count(client_ip) as ip_num group by client_ip order by ip_num desc  在此基础上，按天显示",
-    # }
-    # response = client.call_ai_tools(request).body
-    # if "------answer------\n" in response:
-    #     data = response.split("------answer------\n")[1]
-    # print(data)
+    request = CallAiToolsRequest()
+    request.tool_name = "text_to_sql"
+    request.region_id = "cn-hangzhou"
+    request.params = {
+        "project": project,
+        "logstore": logstore,
+        "sys.query": "帮我统计下 status 是 200 同比昨天的增量",
+    }
+    response = client.call_ai_tools(request).body
+    if "------answer------\n" in response:
+        data = response.split("------answer------\n")[1]
+    print(data)

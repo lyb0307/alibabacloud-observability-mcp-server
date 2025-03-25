@@ -109,6 +109,7 @@ def text_to_sls_log_store_query(
     sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region(
         region_id
     )
+    print("hello2")
     request: CallAiToolsRequest = CallAiToolsRequest()
     request.tool_name = "text_to_sql"
     request.region_id = region_id

@@ -27,12 +27,13 @@ class SLSClientWrapper:
         self.access_key_id = access_key_id
         self.access_key_secret = access_key_secret
 
-    def with_region(self, region: str) -> SLSClient:
+    def with_region(self, region: str, endpoint: Optional[str] = None) -> SLSClient:
         config = open_api_models.Config(
             access_key_id=self.access_key_id,
             access_key_secret=self.access_key_secret,
         )
-        config.endpoint = f"{region}.log.aliyuncs.com"
+        config.endpoint = "pub-cn-hangzhou-staging-share.log.aliyuncs.com"
+        print(config.endpoint)
         return SLSClient(config)
 
 
