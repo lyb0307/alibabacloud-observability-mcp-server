@@ -61,12 +61,7 @@ Toolkit for cms2.0
         - `regions` (list): The region list of aliyun
 
 
-### How to add new tools
 
-1. Add the tool function to the `tools` folder
-2. Add the @tool decorator to the tool function
-3. Can use Field to define the input and output of the tool function
-4. Can use Context to get the mcp context, for example the client of sls,arms,cms,etc.
 
 
 
@@ -83,5 +78,6 @@ python -m mcp_server_aliyun_observability.server --transport sse --access-key-id
 
 ```bash
 python -m mcp_server_aliyun_observability.server --transport stdio --access-key-id <your_access_key_id> --access-key-secret <your_access_key_secret>
+```
 
 
