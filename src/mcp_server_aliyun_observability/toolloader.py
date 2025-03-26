@@ -47,8 +47,13 @@ class ToolLoader:
         self.loaded_tools = set()
 
     def load_tools(self):
-        # 从tools包中加载所有工具
-        tools_package = importlib.import_module("tools")
+        # 从tools包中加载所有工具,兼容直接从 tools 目录加载
+        try:
+            tools_package = importlib.import_module(
+                "mcp_server_aliyun_observability.tools"
+            )
+        except ImportError:
+            tools_package = importlib.import_module("tools")
         for _, name, is_pkg in pkgutil.iter_modules(tools_package.__path__):
             if name.startswith("_"):
                 continue

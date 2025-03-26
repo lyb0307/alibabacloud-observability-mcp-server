@@ -68,6 +68,14 @@ Toolkit for cms2.0
 ### How to run
 Current,the mcp server not deploy to pip,so you need to run it from source code.
 
+#### Install dependencies
+
+```bash
+pip install poetry
+poetry update
+```
+
+
 #### SSE Mode
 
 ```bash

@@ -13,3 +13,10 @@ __pycache__
 dist/*
 build
 .venv
+**/*.egg-info
+**/*.egg
+**/*.dist-info
+**/*.whl
+**/*.tar.gz
+**/*.zip
+**/*.tar.bz2

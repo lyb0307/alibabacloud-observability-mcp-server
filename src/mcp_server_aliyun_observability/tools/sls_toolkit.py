@@ -10,27 +10,83 @@ from alibabacloud_sls20201230.models import (
     GetLogsResponse,
     IndexJsonKey,
     IndexKey,
+    ListAllProjectsRequest,
+    ListAllProjectsResponse,
+    ListLogStoresRequest,
+    ListLogStoresResponse,
 )
+from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context
 from mcp.types import TextContent
 from pydantic import Field
 
 from mcp_server_aliyun_observability.toolloader import tool
 
-"""
-get_log_store_index
-"""
+
+@tool()
+def sls_list_projects(
+    ctx: Context,
+    project_name_query: str = Field(None, description="project name,fuzzy search"),
+    region_id: str = Field(..., description="region id"),
+    content: str = Field(..., description="content,the content of the chat history"),
+    limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
+) -> list[dict[str, Any]]:
+    """
+    list all projects in the region,support fuzzy search by project name, if you don't provide the project name,the tool will return all projects in the region
+    """
+    sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region(
+        region_id
+    )
+    request: ListAllProjectsRequest = ListAllProjectsRequest(
+        project_name=project_name_query,
+        region_id=region_id,
+        size=limit,
+    )
+    response: ListAllProjectsResponse = sls_client.list_all_projects(request)
+    return [
+        {
+            "project_name": project.project_name,
+            "description": project.description,
+        }
+        for project in response.body.projects
+    ]
 
 
 @tool()
-def get_sls_log_store_schema(
+def sls_list_project_log_stores(
+    ctx: Context,
+    project: str = Field(..., description="sls project name"),
+    region_id: str = Field(..., description="region id"),
+    log_store: str = Field(None, description="log store name,fuzzy search"),
+    limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
+    log_store_type: str = Field(
+        None, description="log store type,default is logs,should be logs,metrics"
+    ),
+) -> list[str]:
+    """
+    list all log stores in the project,support fuzzy search by log store name, if you don't provide the log store name,the tool will return all log stores in the project
+    """
+    sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region(
+        region_id
+    )
+    request: ListLogStoresRequest = ListLogStoresRequest(
+        logstore_name=log_store,
+        size=limit,
+        telemetry_type=log_store_type,
+    )
+    response: ListLogStoresResponse = sls_client.list_log_stores(project, request)
+    return response.body.logstores
+
+
+@tool()
+def sls_describe_log_store(
     ctx: Context,
     project: str = Field(..., description="sls project name"),
     log_store: str = Field(..., description="sls log store name"),
     region_id: str = Field(..., description="region id"),
 ) -> dict:
     """
-    get the index of the log store,which is the schema of the log store
+    describe the log store schema or index info
     """
     sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region(
         region_id
@@ -50,7 +106,7 @@ def get_sls_log_store_schema(
 
 
 @tool()
-def execute_sls_log_store_query(
+def sls_execute_query(
     ctx: Context,
     project: str = Field(..., description="sls project name"),
     log_store: str = Field(..., description="sls log store name"),
@@ -92,7 +148,7 @@ def parse_json_keys(json_keys: dict[str, IndexJsonKey]) -> dict[str, dict[str, s
 
 
 @tool()
-def text_to_sls_log_store_query(
+def sls_text_to_query(
     ctx: Context,
     text: str = Field(
         ..., description="the natural language text to generate sls log store query"
@@ -102,9 +158,8 @@ def text_to_sls_log_store_query(
     log_store: str = Field(..., description="sls log store name"),
 ) -> str:
     """
-    1. Convert the natural language text to sls query, can use to generate sls query from natural language on log store search
-    2. please note the tool not support cms query generation,only support sls query generation
-    3. the tool will return the sls query string, you can use the execute_sls_query tool to execute the query
+    1.Can translate the natural language text to sls query, can use to generate sls query from natural language on log store search
+    2. 可以翻译自然语言为sls查询语句，用于根据自然语言在日志服务中生成sls查询语句
     """
     sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region(
         region_id, endpoint="pub-cn-hangzhou-staging-share.log.aliyuncs.com"
@@ -118,7 +173,12 @@ def text_to_sls_log_store_query(
         "sys.query": text,
     }
     request.params = params
-    tool_response: CallAiToolsResponse = sls_client.call_ai_tools(request)
+    runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
+    runtime.read_timeout = 60000
+    runtime.connect_timeout = 60000
+    tool_response: CallAiToolsResponse = sls_client.call_ai_tools_with_options(
+        request=request, headers={}, runtime=runtime
+    )
     data = tool_response.body
     if "------answer------\n" in data:
         data = data.split("------answer------\n")[1]
