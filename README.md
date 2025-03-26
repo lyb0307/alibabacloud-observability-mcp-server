@@ -66,7 +66,11 @@ Toolkit for cms2.0
 
 
 ### How to run
-Current,the mcp server not deploy to pip,so you need to run it from source code.
+
+```shell
+pip install -e .
+python -m mcp_server_aliyun_observability --transport sse --access-key-id <your_access_key_id> --access-key-secret <your_access_key_secret>
+```
 
 #### Install dependencies
 
