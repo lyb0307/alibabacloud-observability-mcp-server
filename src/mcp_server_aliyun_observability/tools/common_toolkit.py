@@ -33,7 +33,7 @@ def get_current_time(
     ),
 ) -> dict:
     """
-    Get current time,format: the unix timestamp in seconds
+    Get current time,result is a dict with timestamp,date in %Y-%m-%d %H:%M:%S format,timezone
     """
     return {
         "timestamp": int(datetime.now(timezone).timestamp()),
