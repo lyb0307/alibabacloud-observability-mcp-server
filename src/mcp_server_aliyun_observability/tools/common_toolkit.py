@@ -26,17 +26,11 @@ def list_all_regions(ctx: Context) -> str:
 
 
 @tool()
-def get_current_time(
-    ctx: Context,
-    timezone: str = Field(
-        default="Asia/Shanghai", description="The timezone of the current time"
-    ),
-) -> dict:
+def get_current_time(ctx: Context) -> dict:
     """
     Get current time,result is a dict with timestamp,date in %Y-%m-%d %H:%M:%S format,timezone
     """
     return {
-        "timestamp": int(datetime.now(timezone).timestamp()),
-        "date": datetime.now(timezone).strftime("%Y-%m-%d %H:%M:%S"),
-        "timezone": timezone,
+        "timestamp": int(datetime.now().timestamp()),
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
