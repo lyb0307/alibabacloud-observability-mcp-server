@@ -15,12 +15,8 @@ def create_lifespan(access_key_id: str, access_key_secret: str):
     @asynccontextmanager
     async def lifespan(fastmcp: FastMCP) -> AsyncIterator[dict]:
         sls_client = SLSClientWrapper(access_key_id, access_key_secret)
-        cms_client = CMSClientWrapper(
-            access_key_id, access_key_secret=access_key_secret
-        )
         yield {
             "sls_client": sls_client,
-            "cms_client": cms_client,
         }
 
     return lifespan

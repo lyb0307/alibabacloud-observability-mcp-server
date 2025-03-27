@@ -30,24 +30,6 @@ class SLSClientWrapper:
         return SLSClient(config)
 
 
-class CMSClientWrapper:
-    """
-    A wrapper for aliyun client
-    """
-
-    def __init__(self, access_key_id: str, access_key_secret: str):
-        self.access_key_id = access_key_id
-        self.access_key_secret = access_key_secret
-
-    def with_region(self, region: str) -> CMSClient:
-        config = open_api_models.Config(
-            access_key_id=self.access_key_id,
-            access_key_secret=self.access_key_secret,
-        )
-        config.endpoint = "cms-pre.cn-hangzhou.aliyuncs.com"
-        return CMSClient(config)
-
-
 def parse_json_keys(json_keys: dict[str, IndexJsonKey]) -> dict[str, dict[str, str]]:
     result: dict[str, dict[str, str]] = {}
     for key, value in json_keys.items():
