@@ -6,7 +6,6 @@ from mcp.server.fastmcp import FastMCP
 
 from mcp_server_aliyun_observability.tools import ToolManager
 from mcp_server_aliyun_observability.utils import (
-    CMSClientWrapper,
     SLSClientWrapper,
 )
 
