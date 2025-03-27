@@ -3210,7 +3210,6 @@ class OSSIngestionConfigurationSource(TeaModel):
         interval: str = None,
         pattern: str = None,
         prefix: str = None,
-        processor_id: str = None,
         restore_object_enabled: bool = None,
         role_arn: str = None,
         start_time: int = None,
@@ -3235,7 +3234,6 @@ class OSSIngestionConfigurationSource(TeaModel):
         self.interval = interval
         self.pattern = pattern
         self.prefix = prefix
-        self.processor_id = processor_id
         self.restore_object_enabled = restore_object_enabled
         self.role_arn = role_arn
         self.start_time = start_time
@@ -3273,8 +3271,6 @@ class OSSIngestionConfigurationSource(TeaModel):
             result['pattern'] = self.pattern
         if self.prefix is not None:
             result['prefix'] = self.prefix
-        if self.processor_id is not None:
-            result['processorId'] = self.processor_id
         if self.restore_object_enabled is not None:
             result['restoreObjectEnabled'] = self.restore_object_enabled
         if self.role_arn is not None:
@@ -3313,8 +3309,6 @@ class OSSIngestionConfigurationSource(TeaModel):
             self.pattern = m.get('pattern')
         if m.get('prefix') is not None:
             self.prefix = m.get('prefix')
-        if m.get('processorId') is not None:
-            self.processor_id = m.get('processorId')
         if m.get('restoreObjectEnabled') is not None:
             self.restore_object_enabled = m.get('restoreObjectEnabled')
         if m.get('roleARN') is not None:
@@ -4286,7 +4280,7 @@ class Chart(TeaModel):
 class Dashboard(TeaModel):
     def __init__(
         self,
-        attribute: Dict[str, Any] = None,
+        attribute: Dict[str, str] = None,
         charts: List[Chart] = None,
         dashboard_name: str = None,
         description: str = None,
