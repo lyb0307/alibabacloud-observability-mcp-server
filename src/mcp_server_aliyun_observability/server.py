@@ -27,7 +27,7 @@ def init_server(
     log_level: str = "INFO",
     transport_port: int = 8000,
 ):
-    """初始化全局 MCP 服务器实例"""
+    """initialize the global mcp server instance"""
     mcp_server = FastMCP(
         name="mcp_aliyun_observability_server",
         lifespan=create_lifespan(access_key_id, access_key_secret),
@@ -45,9 +45,7 @@ def server(
     log_level: str,
     transport_port: int,
 ):
-    # 创建或获取服务器实例
     server: FastMCP = init_server(
         access_key_id, access_key_secret, log_level, transport_port
     )
-    # 运行服务器
     server.run(transport)

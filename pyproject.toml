@@ -51,4 +51,4 @@ dev = []
 
 
 [project.scripts]
-mcp_server_aliyun_observability = "mcp_server_aliyun_observability:main" 
+mcp-server-aliyun-observability = "mcp_server_aliyun_observability:main" 

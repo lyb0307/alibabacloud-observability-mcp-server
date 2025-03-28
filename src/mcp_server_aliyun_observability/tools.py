@@ -25,25 +25,25 @@ from mcp_server_aliyun_observability.utils import parse_json_keys
 
 
 class ToolManager:
-    """阿里云可观测性工具管理器，负责管理所有的工具函数"""
+    """aliyun observability tools manager"""
 
     def __init__(self, server: FastMCP):
         """
-        初始化工具管理器
+        initialize the tools manager
 
         Args:
-            server: FastMCP 服务器实例
+            server: FastMCP server instance
         """
         self.server = server
         self._register_tools()
 
     def _register_tools(self):
-        """注册所有工具函数到 FastMCP 服务器"""
+        """register all tools functions to the FastMCP server"""
         self._register_sls_tools()
         self._register_common_tools()
 
     def _register_sls_tools(self):
-        """注册 SLS 相关的工具函数"""
+        """register sls related tools functions"""
 
         @self.server.tool()
         def sls_list_projects(
@@ -78,7 +78,7 @@ class ToolManager:
             ]
 
         @self.server.tool()
-        def sls_list_project_log_stores(
+        def sls_list_logstores(
             ctx: Context,
             project: str = Field(..., description="sls project name"),
             region_id: str = Field(..., description="region id"),
@@ -106,7 +106,7 @@ class ToolManager:
             return response.body.logstores
 
         @self.server.tool()
-        def sls_describe_log_store(
+        def sls_describe_logstore(
             ctx: Context,
             project: str = Field(..., description="sls project name"),
             log_store: str = Field(..., description="sls log store name"),
@@ -152,7 +152,6 @@ class ToolManager:
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
             ].with_region(region_id)
-            ##如果是毫秒，则转换为秒
             request: GetLogsRequest = GetLogsRequest(
                 query=query,
                 from_=from_timestamp,
@@ -176,7 +175,6 @@ class ToolManager:
         ) -> str:
             """
             1.Can translate the natural language text to sls query, can use to generate sls query from natural language on log store search
-            2. 可以翻译自然语言为sls查询语句，用于根据自然语言在日志服务中生成sls查询语句
             """
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
@@ -204,32 +202,23 @@ class ToolManager:
             return data
 
     def _register_common_tools(self):
-        """注册通用工具函数"""
+        """register common tools functions"""
 
         @self.server.tool()
         def list_all_regions(ctx: Context) -> str:
             """
-            list all regions
+            1. Sample some regions,not all regions
             """
             try:
-                # 这里可以扩展为实际调用API获取区域列表
                 return {
                     "cn-hangzhou": "杭州",
                     "cn-beijing": "北京",
                     "cn-shanghai": "上海",
                     "cn-shenzhen": "深圳",
                     "cn-qingdao": "青岛",
+                    "cn-guangzhou": "广州",
+                    "cn-zhangjiakou": "张家口",
                 }
             except Exception as e:
-                print(f"获取区域列表失败: {str(e)}")
-                return {"cn-hangzhou": "杭州"}
-
-        @self.server.tool()
-        def get_current_time(ctx: Context) -> dict:
-            """
-            Get current time,result is a dict with timestamp,date in %Y-%m-%d %H:%M:%S format,timezone
-            """
-            return {
-                "timestamp": int(datetime.now().timestamp()),
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            }
+                print(f"get regions list failed: {str(e)}")
+                return {}
