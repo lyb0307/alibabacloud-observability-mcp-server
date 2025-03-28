@@ -89,6 +89,16 @@ uv install mcp-server-aliyun-observability
 uv run mcp-server-aliyun-observability --transport sse --access-key-id <your_access_key_id> --access-key-secret <your_access_key_secret>
 ```
 
+### 从源码安装
+
+```bash
+# clone 源码
+cd src/mcp_server_aliyun_observability
+# 安装
+pip install -e .
+# 运行
+python -m mcp_server_aliyun_observability --transport sse --access-key-id <your_access_key_id> --access-key-secret <your_access_key_secret>
+```
 
 
 
