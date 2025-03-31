@@ -190,17 +190,6 @@ class ToolManager:
         """register arms related tools functions"""
 
         @self.server.tool()
-        def arms_analyze_trace(
-            ctx: Context,
-            trace_id: str = Field(..., description="trace id"),
-            region_id: str = Field(..., description="region id"),
-        ) -> dict:
-            """
-            analyze the single arms trace,find why the trace is slow or error
-            """
-            pass
-
-        @self.server.tool()
         def arms_search_app(
             ctx: Context,
             app_name_query: str = Field(..., description="app name query"),
@@ -266,11 +255,12 @@ class ToolManager:
 
             data: dict[str, str] = get_arms_user_trace_log_store(user_id, region_id)
             instructions = [
-                "pid为" + pid,
-                "响应时间字段为 duration,单位为纳秒，转换成毫秒",
-                "注意因为保存的是每个 span 记录,如果是耗时，需要对所有符合条件的span 耗时做求和",
-                "涉及到接口服务等字段,使用 serviceName字段",
-                "resource.xx 里面字段优先级降低请根据以上信息生成sls查询语句",
+                "1. pid为" + pid,
+                "2. 响应时间字段为 duration,单位为纳秒，转换成毫秒",
+                "3. 注意因为保存的是每个 span 记录,如果是耗时，需要对所有符合条件的span 耗时做求和",
+                "4. 涉及到接口服务等字段,使用 serviceName字段",
+                "5. 返回字段里面包含 traceId,字段为traceId",
+                "6. resource.xx 里面字段优先级降低请根据以上信息生成sls查询语句",
             ]
             instructions_str = "\n".join(instructions)
             prompt = f"""
