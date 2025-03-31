@@ -1,5 +1,6 @@
 import hashlib
-from typing import Optional
+import io
+from typing import IO, BinaryIO, Optional, Union
 
 from alibabacloud_arms20190808.client import (
     Client as ArmsClient,
@@ -65,11 +66,47 @@ def get_arms_user_trace_log_store(user_id: int, region: str) -> dict[str, str]:
     get the log store name of the user's trace
     """
     # project是基于 user_id md5,proj-xtrace-xxx-cn-hangzhou
-    text = (str(user_id) + region).encode()
     if "finance" in region:
-        project = f"proj-xtrace-{hashlib.md5(text).hexdigest()}"
+        text = str(user_id) + region
+        project = f"proj-xtrace-{md5_string(text)}"
     else:
-        project = f"proj-xtrace-{hashlib.md5(text).hexdigest()}"
+        text = str(user_id)
+        project = f"proj-xtrace-{md5_string(text)}-{region}"
     # logstore-xtrace-1277589232893727-cn-hangzhou
-    log_store = f"logstore-xtrace-{user_id}-{region}"
+    log_store = "logstore-tracing"
     return {"project": project, "log_store": log_store}
+
+
+def md5_string(origin: str) -> str:
+    """
+    计算字符串的MD5值，与Java实现对应
+
+    Args:
+        origin: 要计算MD5的字符串
+
+    Returns:
+        MD5值的十六进制字符串
+    """
+    buf = origin.encode()
+
+    md5 = hashlib.md5()
+
+    md5.update(buf)
+
+    tmp = md5.digest()
+
+    sb = []
+    for b in tmp:
+        hex_str = format(b & 0xFF, "x")
+        sb.append(hex_str)
+
+    return "".join(sb)
+
+
+if __name__ == "__main__":
+    print(hashlib.md5("1084900439941126".encode()).hexdigest())
+    print(get_arms_user_trace_log_store(1084900439941126, "cn-hangzhou"))
+
+    # 测试md5_stream函数
+    test_data = "1084900439941126"
+    print(f"Test data MD5: {md5_string(test_data)}")

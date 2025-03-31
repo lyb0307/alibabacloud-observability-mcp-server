@@ -267,9 +267,10 @@ class ToolManager:
             data: dict[str, str] = get_arms_user_trace_log_store(user_id, region_id)
             instructions = [
                 "pid为" + pid,
-                "返回 traceId,字段为traceId",
-                "响应时间字段为 elapsed,单位为纳秒",
-                "请根据以上信息生成sls查询语句",
+                "响应时间字段为 duration,单位为纳秒，转换成毫秒",
+                "注意因为保存的是每个 span 记录,如果是耗时，需要对所有符合条件的span 耗时做求和",
+                "涉及到接口服务等字段,使用 serviceName字段",
+                "resource.xx 里面字段优先级降低请根据以上信息生成sls查询语句",
             ]
             instructions_str = "\n".join(instructions)
             prompt = f"""
@@ -290,25 +291,6 @@ class ToolManager:
 
     def _register_common_tools(self):
         """register common tools functions"""
-
-        @self.server.tool()
-        def sls_list_all_regions(ctx: Context) -> str:
-            """
-            1. Sample some regions,not all regions,can visit https://help.aliyun.com/document_detail/40654.html?spm=a2c4g.11186623.6.1314.59484e4185554 to get all regions
-            """
-            try:
-                return {
-                    "cn-hangzhou": "杭州",
-                    "cn-beijing": "北京",
-                    "cn-shanghai": "上海",
-                    "cn-shenzhen": "深圳",
-                    "cn-qingdao": "青岛",
-                    "cn-guangzhou": "广州",
-                    "cn-zhangjiakou": "张家口",
-                }
-            except Exception as e:
-                print(f"get regions list failed: {str(e)}")
-                return {}
 
         @self.server.tool()
         def sls_get_current_time(ctx: Context) -> dict:
