@@ -6,6 +6,9 @@
 
 目前提供的 MCP 工具以阿里云日志服务为主，其他产品会陆续支持，工具详细如下:
 
+### 版本更新
+可以查看 [CHANGELOG.md](CHANGELOG.md) 文件了解最新版本更新内容。
+
 
 ### 工具列表
 
@@ -99,8 +102,5 @@ pip install -e .
 # 运行
 python -m mcp_server_aliyun_observability --transport sse --access-key-id <your_access_key_id> --access-key-secret <your_access_key_secret>
 ```
-
-
-
 
 

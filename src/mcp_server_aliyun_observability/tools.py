@@ -66,6 +66,9 @@ class ToolManager:
             limit: int = Field(
                 default=10, description="limit,max is 100", ge=1, le=100
             ),
+            region_id: str = Field(
+                None, description="specific region id,default return all region"
+            ),
         ) -> list[dict[str, Any]]:
             """
             list all projects in the region,support fuzzy search by project name, if you don't provide the project name,the tool will return all projects in the region
@@ -75,6 +78,7 @@ class ToolManager:
             ].with_region()
             request: ListAllProjectsRequest = ListAllProjectsRequest(
                 project_name=project_name_query,
+                region_id=region_id,
                 size=limit,
             )
             response: ListAllProjectsResponse = sls_client.list_all_projects(request)
@@ -82,6 +86,7 @@ class ToolManager:
                 {
                     "project_name": project.project_name,
                     "description": project.description,
+                    "region_id": project.region,
                 }
                 for project in response.body.projects
             ]
@@ -89,7 +94,7 @@ class ToolManager:
         @self.server.tool()
         def sls_list_logstores(
             ctx: Context,
-            project: str = Field(..., description="sls project name"),
+            project: str = Field(..., description="sls project name,must exact match"),
             log_store: str = Field(None, description="log store name,fuzzy search"),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
             log_store_type: str = Field(
@@ -117,8 +122,12 @@ class ToolManager:
         @self.server.tool()
         def sls_describe_logstore(
             ctx: Context,
-            project: str = Field(..., description="sls project name"),
-            log_store: str = Field(..., description="sls log store name"),
+            project: str = Field(
+                ..., description="sls project name,must exact match,not fuzzy search"
+            ),
+            log_store: str = Field(
+                ..., description="sls log store name,must exact match,not fuzzy search"
+            ),
         ) -> dict:
             """
             describe the log store schema or index info
@@ -165,12 +174,17 @@ class ToolManager:
                 to=to_timestamp,
                 line=limit,
             )
-            response: GetLogsResponse = sls_client.get_logs(project, log_store, request)
+            runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
+            runtime.read_timeout = 60000
+            runtime.connect_timeout = 60000
+            response: GetLogsResponse = sls_client.get_logs_with_options(
+                project, log_store, request, headers={}, runtime=runtime
+            )
             response_body: List[Dict[str, Any]] = response.body
             return response_body
 
         @self.server.tool()
-        def sls_text_to_query(
+        def sls_translate_natural_language_to_query(
             ctx: Context,
             text: str = Field(
                 ...,
@@ -188,7 +202,7 @@ class ToolManager:
         """register arms related tools functions"""
 
         @self.server.tool()
-        def arms_search_app(
+        def arms_search_apps(
             ctx: Context,
             app_name_query: str = Field(..., description="app name query"),
             region_id: str = Field(..., description="region id"),
@@ -268,7 +282,7 @@ class ToolManager:
             请根据以上信息生成sls查询语句
             """
             sls_text_to_query = text_to_sql(
-                ctx, prompt, region_id, data["project"], data["log_store"]
+                ctx, prompt, data["project"], data["log_store"]
             )
             return {
                 "sls_query": sls_text_to_query,
