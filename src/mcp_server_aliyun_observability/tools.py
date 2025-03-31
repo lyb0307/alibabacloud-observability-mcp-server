@@ -260,7 +260,6 @@ class ToolManager:
                 "3. 注意因为保存的是每个 span 记录,如果是耗时，需要对所有符合条件的span 耗时做求和",
                 "4. 涉及到接口服务等字段,使用 serviceName字段",
                 "5. 返回字段里面包含 traceId,字段为traceId",
-                "6. resource.xx 里面字段优先级降低请根据以上信息生成sls查询语句",
             ]
             instructions_str = "\n".join(instructions)
             prompt = f"""
