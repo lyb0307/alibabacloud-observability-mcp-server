@@ -18,6 +18,7 @@ from alibabacloud_sls20201230.models import (
     GetIndexResponseBody,
     GetLogsRequest,
     GetLogsResponse,
+    GetProjectResponse,
     IndexKey,
     ListAllProjectsRequest,
     ListAllProjectsResponse,
@@ -62,18 +63,18 @@ class ToolManager:
             project_name_query: str = Field(
                 None, description="project name,fuzzy search"
             ),
-            region_id: str = Field(..., description="region id"),
-            limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
+            limit: int = Field(
+                default=10, description="limit,max is 100", ge=1, le=100
+            ),
         ) -> list[dict[str, Any]]:
             """
             list all projects in the region,support fuzzy search by project name, if you don't provide the project name,the tool will return all projects in the region
             """
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
-            ].with_region(region_id)
+            ].with_region()
             request: ListAllProjectsRequest = ListAllProjectsRequest(
                 project_name=project_name_query,
-                region_id=region_id,
                 size=limit,
             )
             response: ListAllProjectsResponse = sls_client.list_all_projects(request)
@@ -89,7 +90,6 @@ class ToolManager:
         def sls_list_logstores(
             ctx: Context,
             project: str = Field(..., description="sls project name"),
-            region_id: str = Field(..., description="region id"),
             log_store: str = Field(None, description="log store name,fuzzy search"),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
             log_store_type: str = Field(
@@ -100,9 +100,10 @@ class ToolManager:
             """
             list all log stores in the project,support fuzzy search by log store name, if you don't provide the log store name,the tool will return all log stores in the project
             """
+
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
-            ].with_region(region_id)
+            ].with_region(get_region_id(ctx, project))
             request: ListLogStoresRequest = ListLogStoresRequest(
                 logstore_name=log_store,
                 size=limit,
@@ -118,14 +119,13 @@ class ToolManager:
             ctx: Context,
             project: str = Field(..., description="sls project name"),
             log_store: str = Field(..., description="sls log store name"),
-            region_id: str = Field(..., description="region id"),
         ) -> dict:
             """
             describe the log store schema or index info
             """
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
-            ].with_region(region_id)
+            ].with_region(get_region_id(ctx, project))
             response: GetIndexResponse = sls_client.get_index(project, log_store)
             response_body: GetIndexResponseBody = response.body
             keys: dict[str, IndexKey] = response_body.keys
@@ -144,7 +144,6 @@ class ToolManager:
             ctx: Context,
             project: str = Field(..., description="sls project name"),
             log_store: str = Field(..., description="sls log store name"),
-            region_id: str = Field(..., description="region id"),
             query: str = Field(..., description="query"),
             from_timestamp: int = Field(
                 ..., description="from timestamp,unit is second"
@@ -159,7 +158,7 @@ class ToolManager:
             """
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
-            ].with_region(region_id)
+            ].with_region(get_region_id(ctx, project))
             request: GetLogsRequest = GetLogsRequest(
                 query=query,
                 from_=from_timestamp,
@@ -177,14 +176,13 @@ class ToolManager:
                 ...,
                 description="the natural language text to generate sls log store query",
             ),
-            region_id: str = Field(..., description="region id"),
             project: str = Field(..., description="sls project name"),
             log_store: str = Field(..., description="sls log store name"),
         ) -> str:
             """
-            1.Can translate the natural language text to sls query, can use to generate sls query from natural language on log store search
+            1.Can translate the natural language text to sls query or sql, can use to generate sls query or sql from natural language on log store search
             """
-            return text_to_sql(ctx, text, region_id, project, log_store)
+            return text_to_sql(ctx, text, project, log_store)
 
     def _register_arms_tools(self):
         """register arms related tools functions"""
@@ -292,11 +290,11 @@ class ToolManager:
             }
 
 
-def text_to_sql(
-    ctx: Context, text: str, region_id: str, project: str, log_store: str
-) -> str:
+def text_to_sql(ctx: Context, text: str, project: str, log_store: str) -> str:
+    project_info: dict = get_project_info(ctx, project)
+    region_id: str = project_info["region_id"]
     sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region(
-        region_id, endpoint="pub-cn-hangzhou-staging-share.log.aliyuncs.com"
+        "cn-shanghai"
     )
     request: CallAiToolsRequest = CallAiToolsRequest()
     request.tool_name = "text_to_sql"
@@ -317,3 +315,31 @@ def text_to_sql(
     if "------answer------\n" in data:
         data = data.split("------answer------\n")[1]
     return data
+
+
+def get_project_info(ctx: Context, project: str) -> dict:
+    """
+    get the project info
+    """
+    sls_client: Client = ctx.request_context.lifespan_context[
+        "sls_client"
+    ].with_region()
+    request: ListAllProjectsRequest = ListAllProjectsRequest()
+    request.project_name = project
+    response: ListAllProjectsResponse = sls_client.list_all_projects(request)
+    for user_project in response.body.projects:
+        if user_project.project_name == project:
+            return {
+                "project_name": user_project.project_name,
+                "description": user_project.description,
+                "region_id": user_project.region,
+            }
+    raise ValueError(f"project {project} not found")
+
+
+def get_region_id(ctx: Context, project: str) -> str:
+    """
+    get the region id
+    """
+    project_info: dict = get_project_info(ctx, project)
+    return project_info["region_id"]
