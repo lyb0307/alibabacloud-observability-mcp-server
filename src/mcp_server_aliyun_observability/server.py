@@ -6,6 +6,7 @@ from mcp.server.fastmcp import FastMCP
 
 from mcp_server_aliyun_observability.tools import ToolManager
 from mcp_server_aliyun_observability.utils import (
+    ArmsClientWrapper,
     SLSClientWrapper,
 )
 
@@ -14,8 +15,10 @@ def create_lifespan(access_key_id: str, access_key_secret: str):
     @asynccontextmanager
     async def lifespan(fastmcp: FastMCP) -> AsyncIterator[dict]:
         sls_client = SLSClientWrapper(access_key_id, access_key_secret)
+        arms_client = ArmsClientWrapper(access_key_id, access_key_secret)
         yield {
             "sls_client": sls_client,
+            "arms_client": arms_client,
         }
 
     return lifespan

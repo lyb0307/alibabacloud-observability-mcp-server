@@ -3,6 +3,13 @@
 from datetime import datetime
 from typing import Any, Dict, List
 
+from alibabacloud_arms20190808.client import Client as ArmsClient
+from alibabacloud_arms20190808.models import (
+    SearchTraceAppByPageRequest,
+    SearchTraceAppByPageResponse,
+    SearchTraceAppByPageResponseBody,
+    SearchTraceAppByPageResponseBodyPageBean,
+)
 from alibabacloud_sls20201230.client import Client
 from alibabacloud_sls20201230.models import (
     CallAiToolsRequest,
@@ -21,7 +28,10 @@ from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
 
-from mcp_server_aliyun_observability.utils import parse_json_keys
+from mcp_server_aliyun_observability.utils import (
+    get_arms_user_trace_log_store,
+    parse_json_keys,
+)
 
 
 class ToolManager:
@@ -41,6 +51,7 @@ class ToolManager:
         """register all tools functions to the FastMCP server"""
         self._register_sls_tools()
         self._register_common_tools()
+        self._register_arms_tools()
 
     def _register_sls_tools(self):
         """register sls related tools functions"""
@@ -52,9 +63,6 @@ class ToolManager:
                 None, description="project name,fuzzy search"
             ),
             region_id: str = Field(..., description="region id"),
-            content: str = Field(
-                ..., description="content,the content of the chat history"
-            ),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
         ) -> list[dict[str, Any]]:
             """
@@ -176,38 +184,117 @@ class ToolManager:
             """
             1.Can translate the natural language text to sls query, can use to generate sls query from natural language on log store search
             """
-            sls_client: Client = ctx.request_context.lifespan_context[
-                "sls_client"
-            ].with_region(
-                region_id, endpoint="pub-cn-hangzhou-staging-share.log.aliyuncs.com"
+            return text_to_sql(ctx, text, region_id, project, log_store)
+
+    def _register_arms_tools(self):
+        """register arms related tools functions"""
+
+        @self.server.tool()
+        def arms_analyze_trace(
+            ctx: Context,
+            trace_id: str = Field(..., description="trace id"),
+            region_id: str = Field(..., description="region id"),
+        ) -> dict:
+            """
+            analyze the single arms trace,find why the trace is slow or error
+            """
+            pass
+
+        @self.server.tool()
+        def arms_search_app(
+            ctx: Context,
+            app_name_query: str = Field(..., description="app name query"),
+            region_id: str = Field(..., description="region id"),
+            page_size: int = Field(
+                20, description="page size,max is 100", ge=1, le=100
+            ),
+            page_number: int = Field(1, description="page number,default is 1", ge=1),
+        ) -> list[dict[str, Any]]:
+            """
+            search the arms app by app name
+            1. app_name_query is required,and should be part of the app name
+            2. the tool will return the app name,pid,type
+            3. the pid is unique id of the app,can be used to other arms tools
+            """
+            arms_client: ArmsClient = ctx.request_context.lifespan_context[
+                "arms_client"
+            ].with_region(region_id)
+            request: SearchTraceAppByPageRequest = SearchTraceAppByPageRequest(
+                trace_app_name=app_name_query,
+                region_id=region_id,
+                page_size=page_size,
+                page_number=page_number,
             )
-            request: CallAiToolsRequest = CallAiToolsRequest()
-            request.tool_name = "text_to_sql"
-            request.region_id = region_id
-            params: dict[str, Any] = {
-                "project": project,
-                "logstore": log_store,
-                "sys.query": text,
+            response: SearchTraceAppByPageResponse = (
+                arms_client.search_trace_app_by_page(request)
+            )
+            page_bean: SearchTraceAppByPageResponseBodyPageBean = (
+                response.body.page_bean
+            )
+            result = {
+                "total": page_bean.total_count,
+                "page_size": page_bean.page_size,
+                "page_number": page_bean.page_number,
+                "trace_apps": [],
             }
-            request.params = params
-            runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
-            runtime.read_timeout = 60000
-            runtime.connect_timeout = 60000
-            tool_response: CallAiToolsResponse = sls_client.call_ai_tools_with_options(
-                request=request, headers={}, runtime=runtime
+            if page_bean:
+                result["trace_apps"] = [
+                    {
+                        "app_name": app.app_name,
+                        "pid": app.pid,
+                        "user_id": app.user_id,
+                        "type": app.type,
+                    }
+                    for app in page_bean.trace_apps
+                ]
+
+            return result
+
+        @self.server.tool()
+        def arms_generate_trace_query(
+            ctx: Context,
+            user_id: int = Field(..., description="user aliyun account id"),
+            pid: str = Field(..., description="pid,the pid of the app"),
+            region_id: str = Field(..., description="region id"),
+            question: str = Field(
+                ..., description="question,the question to query the trace"
+            ),
+        ) -> dict:
+            """
+            generate the trace query by the natural language text
+            """
+
+            data: dict[str, str] = get_arms_user_trace_log_store(user_id, region_id)
+            instructions = [
+                "pid为" + pid,
+                "返回 traceId,字段为traceId",
+                "响应时间字段为 elapsed,单位为纳秒",
+                "请根据以上信息生成sls查询语句",
+            ]
+            instructions_str = "\n".join(instructions)
+            prompt = f"""
+            问题:
+            {question}
+            补充信息:
+            {instructions_str}
+            请根据以上信息生成sls查询语句
+            """
+            sls_text_to_query = text_to_sql(
+                ctx, prompt, region_id, data["project"], data["log_store"]
             )
-            data = tool_response.body
-            if "------answer------\n" in data:
-                data = data.split("------answer------\n")[1]
-            return data
+            return {
+                "sls_query": sls_text_to_query,
+                "project": data["project"],
+                "log_store": data["log_store"],
+            }
 
     def _register_common_tools(self):
         """register common tools functions"""
 
         @self.server.tool()
-        def list_all_regions(ctx: Context) -> str:
+        def sls_list_all_regions(ctx: Context) -> str:
             """
-            1. Sample some regions,not all regions
+            1. Sample some regions,not all regions,can visit https://help.aliyun.com/document_detail/40654.html?spm=a2c4g.11186623.6.1314.59484e4185554 to get all regions
             """
             try:
                 return {
@@ -222,3 +309,40 @@ class ToolManager:
             except Exception as e:
                 print(f"get regions list failed: {str(e)}")
                 return {}
+
+        @self.server.tool()
+        def sls_get_current_time(ctx: Context) -> dict:
+            """
+            Get the current time for execute the sls query
+            """
+            return {
+                "current_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "current_timestamp": int(datetime.now().timestamp()),
+            }
+
+
+def text_to_sql(
+    ctx: Context, text: str, region_id: str, project: str, log_store: str
+) -> str:
+    sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region(
+        region_id, endpoint="pub-cn-hangzhou-staging-share.log.aliyuncs.com"
+    )
+    request: CallAiToolsRequest = CallAiToolsRequest()
+    request.tool_name = "text_to_sql"
+    request.region_id = region_id
+    params: dict[str, Any] = {
+        "project": project,
+        "logstore": log_store,
+        "sys.query": text,
+    }
+    request.params = params
+    runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
+    runtime.read_timeout = 60000
+    runtime.connect_timeout = 60000
+    tool_response: CallAiToolsResponse = sls_client.call_ai_tools_with_options(
+        request=request, headers={}, runtime=runtime
+    )
+    data = tool_response.body
+    if "------answer------\n" in data:
+        data = data.split("------answer------\n")[1]
+    return data
