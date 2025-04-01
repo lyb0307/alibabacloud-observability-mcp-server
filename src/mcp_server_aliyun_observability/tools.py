@@ -1,5 +1,6 @@
 # 在 src/mcp_server_aliyun_observability/tools.py 中创建 ToolManager 类
 
+import logging
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -7,7 +8,6 @@ from alibabacloud_arms20190808.client import Client as ArmsClient
 from alibabacloud_arms20190808.models import (
     SearchTraceAppByPageRequest,
     SearchTraceAppByPageResponse,
-    SearchTraceAppByPageResponseBody,
     SearchTraceAppByPageResponseBodyPageBean,
 )
 from alibabacloud_sls20201230.client import Client
@@ -20,19 +20,23 @@ from alibabacloud_sls20201230.models import (
     GetLogsResponse,
     GetProjectResponse,
     IndexKey,
-    ListAllProjectsRequest,
-    ListAllProjectsResponse,
     ListLogStoresRequest,
     ListLogStoresResponse,
+    ListProjectRequest,
+    ListProjectResponse,
 )
 from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from mcp_server_aliyun_observability.utils import (
     get_arms_user_trace_log_store,
     parse_json_keys,
 )
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 
 class ToolManager:
@@ -66,22 +70,19 @@ class ToolManager:
             limit: int = Field(
                 default=10, description="limit,max is 100", ge=1, le=100
             ),
-            region_id: str = Field(
-                None, description="specific region id,default return all region"
-            ),
+            region_id: str = Field(default=..., description="aliyun region id"),
         ) -> list[dict[str, Any]]:
             """
             list all projects in the region,support fuzzy search by project name, if you don't provide the project name,the tool will return all projects in the region
             """
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
-            ].with_region()
-            request: ListAllProjectsRequest = ListAllProjectsRequest(
+            ].with_region(region_id)
+            request: ListProjectRequest = ListProjectRequest(
                 project_name=project_name_query,
-                region_id=region_id,
                 size=limit,
             )
-            response: ListAllProjectsResponse = sls_client.list_all_projects(request)
+            response: ListProjectResponse = sls_client.list_project(request)
             return [
                 {
                     "project_name": project.project_name,
@@ -101,6 +102,7 @@ class ToolManager:
                 None,
                 description="log store type,default is logs,should be logs,metrics",
             ),
+            region_id: str = Field(default=..., description="aliyun region id"),
         ) -> list[str]:
             """
             list all log stores in the project,support fuzzy search by log store name, if you don't provide the log store name,the tool will return all log stores in the project
@@ -108,7 +110,7 @@ class ToolManager:
 
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
-            ].with_region(get_region_id(ctx, project))
+            ].with_region(region_id)
             request: ListLogStoresRequest = ListLogStoresRequest(
                 logstore_name=log_store,
                 size=limit,
@@ -128,13 +130,14 @@ class ToolManager:
             log_store: str = Field(
                 ..., description="sls log store name,must exact match,not fuzzy search"
             ),
+            region_id: str = Field(default=..., description="aliyun region id"),
         ) -> dict:
             """
             describe the log store schema or index info
             """
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
-            ].with_region(get_region_id(ctx, project))
+            ].with_region(region_id)
             response: GetIndexResponse = sls_client.get_index(project, log_store)
             response_body: GetIndexResponseBody = response.body
             keys: dict[str, IndexKey] = response_body.keys
@@ -159,6 +162,7 @@ class ToolManager:
             ),
             to_timestamp: int = Field(..., description="to timestamp,unit is second"),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
+            region_id: str = Field(default=..., description="aliyun region id"),
         ) -> dict:
             """
             1. execute the sls query on the log store
@@ -167,7 +171,7 @@ class ToolManager:
             """
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
-            ].with_region(get_region_id(ctx, project))
+            ].with_region(region_id)
             request: GetLogsRequest = GetLogsRequest(
                 query=query,
                 from_=from_timestamp,
@@ -192,11 +196,12 @@ class ToolManager:
             ),
             project: str = Field(..., description="sls project name"),
             log_store: str = Field(..., description="sls log store name"),
+            region_id: str = Field(default=..., description="aliyun region id"),
         ) -> str:
             """
             1.Can translate the natural language text to sls query or sql, can use to generate sls query or sql from natural language on log store search
             """
-            return text_to_sql(ctx, text, project, log_store)
+            return text_to_sql(ctx, text, project, log_store, region_id)
 
     def _register_arms_tools(self):
         """register arms related tools functions"""
@@ -282,7 +287,7 @@ class ToolManager:
             请根据以上信息生成sls查询语句
             """
             sls_text_to_query = text_to_sql(
-                ctx, prompt, data["project"], data["log_store"]
+                ctx, prompt, data["project"], data["log_store"], region_id
             )
             return {
                 "sls_query": sls_text_to_query,
@@ -304,56 +309,41 @@ class ToolManager:
             }
 
 
-def text_to_sql(ctx: Context, text: str, project: str, log_store: str) -> str:
-    project_info: dict = get_project_info(ctx, project)
-    region_id: str = project_info["region_id"]
-    sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region(
-        "cn-shanghai"
-    )
-    request: CallAiToolsRequest = CallAiToolsRequest()
-    request.tool_name = "text_to_sql"
-    request.region_id = region_id
-    params: dict[str, Any] = {
-        "project": project,
-        "logstore": log_store,
-        "sys.query": text,
-    }
-    request.params = params
-    runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
-    runtime.read_timeout = 60000
-    runtime.connect_timeout = 60000
-    tool_response: CallAiToolsResponse = sls_client.call_ai_tools_with_options(
-        request=request, headers={}, runtime=runtime
-    )
-    data = tool_response.body
-    if "------answer------\n" in data:
-        data = data.split("------answer------\n")[1]
-    return data
-
-
-def get_project_info(ctx: Context, project: str) -> dict:
-    """
-    get the project info
-    """
-    sls_client: Client = ctx.request_context.lifespan_context[
-        "sls_client"
-    ].with_region()
-    request: ListAllProjectsRequest = ListAllProjectsRequest()
-    request.project_name = project
-    response: ListAllProjectsResponse = sls_client.list_all_projects(request)
-    for user_project in response.body.projects:
-        if user_project.project_name == project:
-            return {
-                "project_name": user_project.project_name,
-                "description": user_project.description,
-                "region_id": user_project.region,
-            }
-    raise ValueError(f"project {project} not found")
-
-
-def get_region_id(ctx: Context, project: str) -> str:
-    """
-    get the region id
-    """
-    project_info: dict = get_project_info(ctx, project)
-    return project_info["region_id"]
+@retry(
+    stop=stop_after_attempt(2),
+    wait=wait_fixed(1),
+    retry=retry_if_exception_type(Exception),
+    reraise=True,
+    before_sleep=lambda retry_state: logger.warning(
+        f"调用SLS AI工具失败，正在重试第{retry_state.attempt_number}次... 异常: {retry_state.outcome.exception()}"
+    ),
+)
+def text_to_sql(
+    ctx: Context, text: str, project: str, log_store: str, region_id: str
+) -> str:
+    try:
+        sls_client: Client = ctx.request_context.lifespan_context[
+            "sls_client"
+        ].with_region("cn-shanghai")
+        request: CallAiToolsRequest = CallAiToolsRequest()
+        request.tool_name = "text_to_sql"
+        request.region_id = region_id
+        params: dict[str, Any] = {
+            "project": project,
+            "logstore": log_store,
+            "sys.query": text,
+        }
+        request.params = params
+        runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
+        runtime.read_timeout = 60000
+        runtime.connect_timeout = 60000
+        tool_response: CallAiToolsResponse = sls_client.call_ai_tools_with_options(
+            request=request, headers={}, runtime=runtime
+        )
+        data = tool_response.body
+        if "------answer------\n" in data:
+            data = data.split("------answer------\n")[1]
+        return data
+    except Exception as e:
+        logger.error(f"调用SLS AI工具失败: {str(e)}")
+        raise  # 重新抛出异常以触发重试机制

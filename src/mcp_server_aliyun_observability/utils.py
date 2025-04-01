@@ -2,15 +2,9 @@ import hashlib
 import io
 from typing import IO, BinaryIO, Optional, Union
 
-from alibabacloud_arms20190808.client import (
-    Client as ArmsClient,
-)
-from alibabacloud_sls20201230.client import (
-    Client as SLSClient,
-)
-from alibabacloud_sls20201230.models import (
-    IndexJsonKey,
-)
+from alibabacloud_arms20190808.client import Client as ArmsClient
+from alibabacloud_sls20201230.client import Client as SLSClient
+from alibabacloud_sls20201230.models import IndexJsonKey
 from alibabacloud_tea_openapi import models as open_api_models
 
 
@@ -30,10 +24,7 @@ class SLSClientWrapper:
             access_key_id=self.access_key_id,
             access_key_secret=self.access_key_secret,
         )
-        if region:
-            config.endpoint = f"{region}.log.aliyuncs.com"
-        else:
-            config.endpoint = "cn-shenzhen-ha.log.aliyuncs.com"
+        config.endpoint = f"{region}.log.aliyuncs.com"
         return SLSClient(config)
 
 
