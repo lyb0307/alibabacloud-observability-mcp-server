@@ -5,7 +5,7 @@ description = "aliyun observability mcp server"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "mcp>=1.3.0", 
+    "mcp>=1.3.0",
     "pydantic>=2.10.0",
     "alibabacloud_arms20190808==8.0.0",
     "alibabacloud_sls20201230==5.7.0",
