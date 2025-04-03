@@ -332,7 +332,7 @@ class ToolManager:
             ),
         ) -> dict:
             """
-            generate the trace query by the natural language text
+            Generate the trace query by the natural language tex,you should use this tool to answer any question about application trace query,if you find any application info from context
             <important>
             1. you can use this tool to answer the question
                 1. like "帮我查询下 XXX 的 trace 信息"
@@ -348,7 +348,6 @@ class ToolManager:
                 "2. 响应时间字段为 duration,单位为纳秒，转换成毫秒",
                 "3. 注意因为保存的是每个 span 记录,如果是耗时，需要对所有符合条件的span 耗时做求和",
                 "4. 涉及到接口服务等字段,使用 serviceName字段",
-                "5. 返回字段里面包含 traceId,字段为traceId",
             ]
             instructions_str = "\n".join(instructions)
             prompt = f"""
