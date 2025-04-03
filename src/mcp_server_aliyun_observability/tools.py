@@ -74,6 +74,9 @@ class ToolManager:
         ) -> list[dict[str, Any]]:
             """
             list all projects in the region,support fuzzy search by project name, if you don't provide the project name,the tool will return all projects in the region
+            instructions:
+            1. you can use this tool to answer the question
+                1. like "有没有叫 XXX 的 project"
             """
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
@@ -93,6 +96,12 @@ class ToolManager:
             ]
 
         @self.server.tool()
+        @retry(
+            stop=stop_after_attempt(2),
+            wait=wait_fixed(1),
+            retry=retry_if_exception_type(Exception),
+            reraise=True,
+        )
         def sls_list_logstores(
             ctx: Context,
             project: str = Field(..., description="sls project name,must exact match"),
@@ -105,7 +114,11 @@ class ToolManager:
             region_id: str = Field(default=..., description="aliyun region id"),
         ) -> list[str]:
             """
-            list all log stores in the project,support fuzzy search by log store name, if you don't provide the log store name,the tool will return all log stores in the project
+            1. list all log stores in the project,support fuzzy search by log store name, if you don't provide the log store name,the tool will return all log stores in the project
+            instructions:
+            1. you can use this tool to answer the question
+                1. like "我想查询有没有 XXX 的日志库"
+                2. like "某个 project 有哪些 log store"
             """
 
             sls_client: Client = ctx.request_context.lifespan_context[
@@ -122,6 +135,12 @@ class ToolManager:
             return response.body.logstores
 
         @self.server.tool()
+        @retry(
+            stop=stop_after_attempt(2),
+            wait=wait_fixed(1),
+            retry=retry_if_exception_type(Exception),
+            reraise=True,
+        )
         def sls_describe_logstore(
             ctx: Context,
             project: str = Field(
@@ -134,6 +153,11 @@ class ToolManager:
         ) -> dict:
             """
             describe the log store schema or index info
+            instructions:
+            1. you can use this tool to answer the question
+                1. like "我想查询 XXX 的日志库的 schema"
+                2. like "我想查询 XXX 的日志库的 index"
+                3. like "我想查询 XXX 的日志库的 结构信息"
             """
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
@@ -152,6 +176,12 @@ class ToolManager:
             return index_dict
 
         @self.server.tool()
+        @retry(
+            stop=stop_after_attempt(2),
+            wait=wait_fixed(1),
+            retry=retry_if_exception_type(Exception),
+            reraise=True,
+        )
         def sls_execute_query(
             ctx: Context,
             project: str = Field(..., description="sls project name"),
@@ -168,6 +198,11 @@ class ToolManager:
             1. execute the sls query on the log store
             2. the tool will return the query result
             3. if you don't konw the log store schema,you can use the get_log_store_index tool to get the index of the log store
+            <important>
+            1. you can use this tool to answer the question
+                1. like "帮我查询下 XXX 的日志信息"
+            2. the query should be a sls valid query,not a natural language text
+            </important>
             """
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
@@ -188,6 +223,12 @@ class ToolManager:
             return response_body
 
         @self.server.tool()
+        @retry(
+            stop=stop_after_attempt(2),
+            wait=wait_fixed(1),
+            retry=retry_if_exception_type(Exception),
+            reraise=True,
+        )
         def sls_translate_natural_language_to_query(
             ctx: Context,
             text: str = Field(
@@ -199,7 +240,18 @@ class ToolManager:
             region_id: str = Field(default=..., description="aliyun region id"),
         ) -> str:
             """
-            1.Can translate the natural language text to sls query or sql, can use to generate sls query or sql from natural language on log store search
+            Can translate the natural language text to sls query or sql, can use to generate sls query or sql from natural language on log store search
+            <important>
+            1. you can only answer the question about generate sls query,not commond db sql like mysql,postgresql,elasticsearch,etc.
+            2. you return the sls query,not the query result ,should use the sls_execute_query tool to get the query result
+            3. if user question about arms application,you should use the arms_generate_trace_query tool first
+            4. you can use this tool to answer the question
+                1. like "帮我生成下 XXX 的日志查询语句"
+            5. the text should be a natural language text,must be clear and concise,you can ask user to provide more information if you need
+            6. the text should not include project or log store name
+            7. you can ask user to provide query time range,if you need
+            8. the query result you generate maybe not execute success at first time,you should try to generate the query again,and ask the user to provide more information about the error
+            </important>
             """
             return text_to_sql(ctx, text, project, log_store, region_id)
 
@@ -221,6 +273,13 @@ class ToolManager:
             1. app_name_query is required,and should be part of the app name
             2. the tool will return the app name,pid,type
             3. the pid is unique id of the app,can be used to other arms tools
+            <important>
+            1. you can use this tool to answer the question
+                1. like "帮我查询下 XXX 的应用"
+            2. the app_name_query should be a part of the app name,not a natural language text
+            3. the tool will return the app name,pid,type
+            4. if the question about the arms app,you should use this tool to get the app info
+            </important>
             """
             arms_client: ArmsClient = ctx.request_context.lifespan_context[
                 "arms_client"
@@ -257,6 +316,12 @@ class ToolManager:
             return result
 
         @self.server.tool()
+        @retry(
+            stop=stop_after_attempt(2),
+            wait=wait_fixed(1),
+            retry=retry_if_exception_type(Exception),
+            reraise=True,
+        )
         def arms_generate_trace_query(
             ctx: Context,
             user_id: int = Field(..., description="user aliyun account id"),
@@ -268,6 +333,13 @@ class ToolManager:
         ) -> dict:
             """
             generate the trace query by the natural language text
+            <important>
+            1. you can use this tool to answer the question
+                1. like "帮我查询下 XXX 的 trace 信息"
+            2. the question should be a natural language text,must be clear and concise,you can ask user to provide more information if you need
+            3. you can answer the arms application trace info query,if abount trace query,you should use this tool to generate the trace query,not the sls_translate_natural_language_to_query tool
+            4. you just generate the trace query,not the query result,you should use the sls_execute_query tool to get the query result
+            </important>
             """
 
             data: dict[str, str] = get_arms_user_trace_log_store(user_id, region_id)
