@@ -134,3 +134,9 @@ python -m mcp_server_aliyun_observability --transport sse --access-key-id <your_
 ![image](./images/cursor_demo.png)
 
 
+#### ChatWise集成
+
+![image](./images/chatwise_inter.png)
+
+![image](./images/chatwise_demo.png)
+

@@ -35,6 +35,7 @@ exclude = [
     "**/__pycache__",
     "**/*.pyo",
     "**/*.pyd",
+    "**/*.png",
     ".git",
     ".env",
     ".gitignore",
