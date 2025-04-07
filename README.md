@@ -103,6 +103,7 @@ python -m mcp_server_aliyun_observability --transport sse --access-key-id <your_
 - `--transport-port` 指定传输端口，默认值为 `8000`,仅当 `--transport` 为 `sse` 时有效
 
 
+
 ### 从源码安装
 
 ```bash
@@ -113,5 +114,23 @@ pip install -e .
 # 运行
 python -m mcp_server_aliyun_observability --transport sse --access-key-id <your_access_key_id> --access-key-secret <your_access_key_secret>
 ```
+
+
+### AI 工具集成
+> 以 SSE 启动方式为例
+#### Cherry Studio集成
+
+![image](./images/cherry_studio_inter.png)
+
+![image](./images/cherry_studio_demo.png)
+
+
+#### Cursor集成
+
+![image](./images/cursor_inter.png)
+
+![image](./images/cursor_tools.png)
+
+![image](./images/cursor_demo.png)
 
 
