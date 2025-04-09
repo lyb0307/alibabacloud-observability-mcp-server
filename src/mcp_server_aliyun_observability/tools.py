@@ -186,7 +186,10 @@ class ToolManager:
             response: ListLogStoresResponse = sls_client.list_log_stores(
                 project, request
             )
-            return response.body.logstores
+            return {
+                "total": response.body.total,
+                "logstores": response.body.logstores,
+            }
 
         @self.server.tool()
         @retry(

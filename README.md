@@ -117,7 +117,7 @@ python -m mcp_server_aliyun_observability --transport sse --access-key-id <your_
 
 
 ### AI 工具集成
-> 以 SSE 启动方式为例
+> 以 SSE 启动方式为例,transport 端口为 8888,实际使用时需要根据实际情况修改
 #### Cherry Studio集成
 
 ![image](./images/cherry_studio_inter.png)
