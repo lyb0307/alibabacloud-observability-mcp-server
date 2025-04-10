@@ -292,6 +292,8 @@ class ToolManager:
             - 当需要检索日志中的特定事件或错误时
             - 当需要统计日志数据的聚合信息时
 
+
+
             ## 查询语法
 
             查询必须使用SLS有效的查询语法，而非自然语言。如果不了解日志库的结构，可以先使用sls_describe_logstore工具获取索引信息。
@@ -306,6 +308,9 @@ class ToolManager:
 
             - "帮我查询下 XXX 的日志信息"
             - "查找最近一小时内的错误日志"
+
+            ## 错误处理
+            - Column xxx can not be resolved 如果是 sls_translate_natural_language_to_query 工具生成的查询语句 可能存在查询列未开启统计，可以提示用户增加相对应的信息，或者调用 sls_describe_logstore 工具获取索引信息之后，要用户选择正确的字段或者提示用户对列开启统计。当确定列开启统计之后，可以再次调用sls_translate_natural_language_to_query 工具生成查询语句
 
             Args:
                 ctx: MCP上下文，用于访问SLS客户端
@@ -372,6 +377,7 @@ class ToolManager:
             - 仅支持生成SLS查询，不支持其他数据库的SQL如MySQL、PostgreSQL等
             - 生成的是查询语句，而非查询结果，需要配合sls_execute_query工具使用
             - 如果查询涉及ARMS应用，应优先使用arms_generate_trace_query工具
+            - 需要对应的 log_sotre 已经设定了索引信息，如果生成的结果里面有字段没有索引或者开启统计，可能会导致查询失败，需要友好的提示用户增加相对应的索引信息
 
             ## 最佳实践
 
