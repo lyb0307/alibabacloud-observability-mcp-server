@@ -100,7 +100,7 @@ class ToolManager:
                 ctx: MCP上下文，用于访问SLS客户端
                 project_name_query: 项目名称查询字符串，支持模糊搜索
                 limit: 返回结果的最大数量，范围1-100，默认10
-                region_id: 阿里云区域ID
+                region_id: 阿里云区域ID,region id format like "xx-xxx",like "cn-hangzhou"
 
             Returns:
                 包含项目信息的字典列表，每个字典包含project_name、description和region_id
@@ -138,7 +138,10 @@ class ToolManager:
                 None,
                 description="log store type,default is logs,should be logs,metrics",
             ),
-            region_id: str = Field(default=..., description="aliyun region id"),
+            region_id: str = Field(
+                default=...,
+                description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
+            ),
         ) -> list[str]:
             """列出SLS项目中的日志库。
 
@@ -206,7 +209,10 @@ class ToolManager:
             log_store: str = Field(
                 ..., description="sls log store name,must exact match,not fuzzy search"
             ),
-            region_id: str = Field(default=..., description="aliyun region id"),
+            region_id: str = Field(
+                default=...,
+                description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
+            ),
         ) -> dict:
             """获取SLS日志库的结构信息。
 
@@ -278,7 +284,10 @@ class ToolManager:
             ),
             to_timestamp: int = Field(..., description="to timestamp,unit is second"),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
-            region_id: str = Field(default=..., description="aliyun region id"),
+            region_id: str = Field(
+                default=...,
+                description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
+            ),
         ) -> dict:
             """执行SLS日志查询。
 
@@ -365,7 +374,10 @@ class ToolManager:
             ),
             project: str = Field(..., description="sls project name"),
             log_store: str = Field(..., description="sls log store name"),
-            region_id: str = Field(default=..., description="aliyun region id"),
+            region_id: str = Field(
+                default=...,
+                description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
+            ),
         ) -> str:
             """将自然语言转换为SLS查询语句。
 
@@ -417,7 +429,10 @@ class ToolManager:
         def arms_search_apps(
             ctx: Context,
             app_name_query: str = Field(..., description="app name query"),
-            region_id: str = Field(..., description="region id"),
+            region_id: str = Field(
+                ...,
+                description="region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
+            ),
             page_size: int = Field(
                 20, description="page size,max is 100", ge=1, le=100
             ),
@@ -508,7 +523,10 @@ class ToolManager:
             ctx: Context,
             user_id: int = Field(..., description="user aliyun account id"),
             pid: str = Field(..., description="pid,the pid of the app"),
-            region_id: str = Field(..., description="region id"),
+            region_id: str = Field(
+                ...,
+                description="region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
+            ),
             question: str = Field(
                 ..., description="question,the question to query the trace"
             ),
