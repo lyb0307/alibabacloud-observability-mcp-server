@@ -1,6 +1,6 @@
 [project]
 name = "mcp-server-aliyun-observability"
-version = "0.1.4"
+version = "0.1.5"
 description = "aliyun observability mcp server"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -48,7 +48,7 @@ exclude = [
 allow-direct-references = true
 
 [project.optional-dependencies]
-dev = []
+dev = ["pytest", "pytest-mock", "pytest-cov"]
 
 [project.urls]
 

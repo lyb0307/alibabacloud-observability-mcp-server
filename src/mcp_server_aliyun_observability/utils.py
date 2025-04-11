@@ -1,11 +1,16 @@
 import hashlib
 import io
-from typing import IO, BinaryIO, Optional, Union
+import json
+from functools import wraps
+from typing import IO, Any, BinaryIO, Callable, Optional, TypeVar, Union, cast
 
 from alibabacloud_arms20190808.client import Client as ArmsClient
 from alibabacloud_sls20201230.client import Client as SLSClient
 from alibabacloud_sls20201230.models import IndexJsonKey
 from alibabacloud_tea_openapi import models as open_api_models
+from Tea.exceptions import TeaException
+
+from mcp_server_aliyun_observability.teq_exception_error import TEQ_EXCEPTION_ERROR
 
 
 class SLSClientWrapper:
@@ -99,10 +104,34 @@ def md5_string(origin: str) -> str:
     return "".join(sb)
 
 
-if __name__ == "__main__":
-    print(hashlib.md5("1084900439941126".encode()).hexdigest())
-    print(get_arms_user_trace_log_store(1084900439941126, "cn-hangzhou"))
+T = TypeVar("T")
 
-    # 测试md5_stream函数
-    test_data = "1084900439941126"
-    print(f"Test data MD5: {md5_string(test_data)}")
+
+def handle_tea_exception(func: Callable[..., T]) -> Callable[..., T]:
+    """
+    装饰器：处理阿里云 SDK 的 TeaException 异常
+
+    Args:
+        func: 被装饰的函数
+
+    Returns:
+        装饰后的函数，会自动处理 TeaException 异常
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs) -> T:
+        try:
+            return func(*args, **kwargs)
+        except TeaException as e:
+            for error in TEQ_EXCEPTION_ERROR:
+                if e.code == error["errorCode"]:
+                    return cast(
+                        T,
+                        {
+                            "solution": error["solution"],
+                            "message": error["errorMessage"],
+                        },
+                    )
+            raise e
+
+    return wrapper

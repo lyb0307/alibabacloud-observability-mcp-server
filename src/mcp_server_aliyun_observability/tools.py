@@ -1,5 +1,3 @@
-# 在 src/mcp_server_aliyun_observability/tools.py 中创建 ToolManager 类
-
 import logging
 from datetime import datetime
 from typing import Any, Dict, List
@@ -28,10 +26,12 @@ from alibabacloud_sls20201230.models import (
 from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
+from Tea.exceptions import TeaException
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from mcp_server_aliyun_observability.utils import (
     get_arms_user_trace_log_store,
+    handle_tea_exception,
     parse_json_keys,
 )
 
@@ -267,6 +267,7 @@ class ToolManager:
             retry=retry_if_exception_type(Exception),
             reraise=True,
         )
+        @handle_tea_exception
         def sls_execute_query(
             ctx: Context,
             project: str = Field(..., description="sls project name"),
@@ -341,7 +342,13 @@ class ToolManager:
                 project, log_store, request, headers={}, runtime=runtime
             )
             response_body: List[Dict[str, Any]] = response.body
-            return response_body
+            result = {
+                "data": response_body,
+                "message": "success"
+                if response_body
+                else "Not found data by query,you can try to change the query or time range",
+            }
+            return result
 
         @self.server.tool()
         @retry(
@@ -533,6 +540,7 @@ class ToolManager:
             - 响应时间以纳秒存储，需转换为毫秒
             - 数据以span记录存储，查询耗时需要对符合条件的span进行求和
             - 服务相关信息使用serviceName字段
+            - 如果用户明确提出要查询 trace信息，则需要在查询问题上question 上添加说明返回trace信息
 
             ## 查询示例
 
@@ -556,6 +564,7 @@ class ToolManager:
                 "2. 响应时间字段为 duration,单位为纳秒，转换成毫秒",
                 "3. 注意因为保存的是每个 span 记录,如果是耗时，需要对所有符合条件的span 耗时做求和",
                 "4. 涉及到接口服务等字段,使用 serviceName字段",
+                "5. 如果用户明确提出要查询 trace信息，则需要返回 trace_id",
             ]
             instructions_str = "\n".join(instructions)
             prompt = f"""

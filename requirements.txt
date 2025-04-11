@@ -3,3 +3,7 @@ pydantic>=2.10.0
 alibabacloud_arms20190808>=8.0.0
 alibabacloud_sls20201230>=5.7.0
 tenacity>=8.0.0
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+pytest-mock>=3.10.0 
