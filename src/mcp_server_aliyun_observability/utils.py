@@ -1,16 +1,30 @@
 import hashlib
-import io
-import json
+import logging
 from functools import wraps
-from typing import IO, Any, BinaryIO, Callable, Optional, TypeVar, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Optional,
+    TypeVar,
+    cast,
+)
 
 from alibabacloud_arms20190808.client import Client as ArmsClient
+from alibabacloud_sls20201230.client import Client
 from alibabacloud_sls20201230.client import Client as SLSClient
-from alibabacloud_sls20201230.models import IndexJsonKey
+from alibabacloud_sls20201230.models import (
+    CallAiToolsRequest,
+    CallAiToolsResponse,
+    IndexJsonKey,
+)
 from alibabacloud_tea_openapi import models as open_api_models
+from alibabacloud_tea_util import models as util_models
+from mcp.server.fastmcp import Context
 from Tea.exceptions import TeaException
 
 from mcp_server_aliyun_observability.teq_exception_error import TEQ_EXCEPTION_ERROR
+
+logger = logging.getLogger(__name__)
 
 
 class SLSClientWrapper:
@@ -135,3 +149,34 @@ def handle_tea_exception(func: Callable[..., T]) -> Callable[..., T]:
             raise e
 
     return wrapper
+
+
+def text_to_sql(
+    ctx: Context, text: str, project: str, log_store: str, region_id: str
+) -> str:
+    try:
+        sls_client: Client = ctx.request_context.lifespan_context[
+            "sls_client"
+        ].with_region("cn-shanghai")
+        request: CallAiToolsRequest = CallAiToolsRequest()
+        request.tool_name = "text_to_sql"
+        request.region_id = region_id
+        params: dict[str, Any] = {
+            "project": project,
+            "logstore": log_store,
+            "sys.query": text,
+        }
+        request.params = params
+        runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
+        runtime.read_timeout = 60000
+        runtime.connect_timeout = 60000
+        tool_response: CallAiToolsResponse = sls_client.call_ai_tools_with_options(
+            request=request, headers={}, runtime=runtime
+        )
+        data = tool_response.body
+        if "------answer------\n" in data:
+            data = data.split("------answer------\n")[1]
+        return data
+    except Exception as e:
+        logger.error(f"调用SLS AI工具失败: {str(e)}")
+        raise

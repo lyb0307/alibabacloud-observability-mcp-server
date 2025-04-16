@@ -7,7 +7,7 @@ from mcp.server.fastmcp import Context, FastMCP
 from mcp.shared.context import RequestContext
 
 from mcp_server_aliyun_observability.server import create_lifespan
-from mcp_server_aliyun_observability.tools import ToolManager
+from mcp_server_aliyun_observability.toolkit.sls_toolkit import ToolManager
 from mcp_server_aliyun_observability.utils import SLSClientWrapper
 
 dotenv.load_dotenv()

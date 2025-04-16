@@ -33,7 +33,3 @@ def main(access_key_id, access_key_secret, transport, log_level, transport_port)
             "access_key_id and access_key_secret are required, please set them in environment variables or command line arguments"
         )
     server(access_key_id, access_key_secret, transport, log_level, transport_port)
-
-
-if __name__ == "__main__":
-    main()

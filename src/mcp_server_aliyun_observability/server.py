@@ -4,7 +4,9 @@ from typing import AsyncIterator
 from mcp.server import FastMCP
 from mcp.server.fastmcp import FastMCP
 
-from mcp_server_aliyun_observability.tools import ToolManager
+from mcp_server_aliyun_observability.toolkit.arms_toolkit import ArmsToolkit
+from mcp_server_aliyun_observability.toolkit.sls_toolkit import SLSToolkit
+from mcp_server_aliyun_observability.toolkit.util_toolkit import UtilToolkit
 from mcp_server_aliyun_observability.utils import (
     ArmsClientWrapper,
     SLSClientWrapper,
@@ -37,7 +39,9 @@ def init_server(
         log_level=log_level,
         port=transport_port,
     )
-    ToolManager(mcp_server)
+    SLSToolkit(mcp_server)
+    UtilToolkit(mcp_server)
+    ArmsToolkit(mcp_server)
     return mcp_server
 
 
