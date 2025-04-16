@@ -10,41 +10,8 @@
 目前提供的 MCP 工具以阿里云日志服务为主，其他产品会陆续支持，工具详细如下:
 
 ### 版本记录
+可以查看 [版本记录](./CAHANGELOG.md)
 
-#### 0.1.5
-- 针对 tool 异常统一处理，增加解决方法等信息
-- 优化sls_execute_query 工具的返回提示
-
-#### 0.1.4
-- 优化工具的描述信息，使得模型更加容易识别
-
-#### 0.1.3
-- 优化各个工具的描述信息，使得模型更加容易识别
-
-#### 0.1.1
-本次发布版本为 0.1.1，以新增工具为主，主要包含 SLS 日志服务和 ARMS 应用实时监控服务相关工具。
-
-##### 工具列表
-
-- 增加 SLS 日志服务相关工具
-    - `sls_describe_logstore`
-        - 获取 SLS Logstore 的索引信息
-    - `sls_list_projects`
-        - 获取 SLS 项目列表
-    - `sls_list_logstores`
-        - 获取 SLS Logstore 列表
-    - `sls_describe_logstore`
-        - 获取 SLS Logstore 的索引信息
-    - `sls_execute_query`
-        - 执行SLS 日志查询
-    - `sls_translate_natural_language_to_query`
-        - 翻译自然语言为SLS 查询语句
-
-- 增加 ARMS 应用实时监控服务相关工具
-    - `arms_search_apps`
-        - 搜索 ARMS 应用
-    - `arms_generate_trace_query`
-        - 根据自然语言生成 trace 查询语句
 
 ##### 场景举例
 
