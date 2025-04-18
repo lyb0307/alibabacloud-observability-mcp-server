@@ -7,10 +7,14 @@ from mcp.server.fastmcp import Context, FastMCP
 from mcp.shared.context import RequestContext
 
 from mcp_server_aliyun_observability.server import create_lifespan
-from mcp_server_aliyun_observability.toolkit.sls_toolkit import ToolManager
+from mcp_server_aliyun_observability.toolkit.sls_toolkit import SLSToolkit
 from mcp_server_aliyun_observability.utils import SLSClientWrapper
 
 dotenv.load_dotenv()
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -47,12 +51,12 @@ def mock_request_context():
 @pytest.fixture
 def tool_manager(mcp_server):
     """创建ToolManager实例"""
-    return ToolManager(mcp_server)
+    return SLSToolkit(mcp_server)
 
 
 @pytest.mark.asyncio
 async def test_sls_execute_query_success(
-    tool_manager: ToolManager,
+    tool_manager: SLSToolkit,
     mcp_server: FastMCP,
     mock_request_context: Context,
 ):
@@ -70,5 +74,6 @@ async def test_sls_execute_query_success(
         },
         context=mock_request_context,
     )
+    logger.info(text)
     assert text["data"] is not None
     assert text["message"] == "success"

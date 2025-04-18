@@ -22,7 +22,7 @@ from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context
 from Tea.exceptions import TeaException
 
-from mcp_server_aliyun_observability.teq_exception_error import TEQ_EXCEPTION_ERROR
+from mcp_server_aliyun_observability.api_error import TEQ_EXCEPTION_ERROR
 
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,41 @@
 # MCP 贡献指南
 
+## 步骤
+1. 从 master 分支创建一个分支
+2. 在分支上进行开发测试
+3. 测试完毕之后提交PR
+4. 合并PR到Release分支
+5. 基于 Release 分支发布新版本
+6. 更新 master 分支
+7. 生成版本 tag
+
+## 项目结构
+
+```
+mcp_server_aliyun_observability/
+├── src/
+│ ├── mcp_server_aliyun_observability/
+│ │ ├── server.py
+│ │ ├── toolkit/
+│ │ │ ├── sls_toolkit.py
+│ │ │ ├── arms_toolkit.py
+│ │ │ └── util_toolkit.py
+│ │ └── utils.py
+│ │ └── api_error.py
+│ └── tests/
+│ │ ├── test_sls_toolkit.py
+│ │ └── test_arms_toolkit.py
+│ └── conftest.py
+```
+1. server.py 是 MCP 服务端代码，负责处理 MCP 请求
+2. toolkit 目录下是 MCP 工具所在，按照产品来组织文件，比如 `src/mcp_server_aliyun_observability/toolkit/sls_toolkit.py` 来定义SLS相关的工具，`src/mcp_server_aliyun_observability/toolkit/arms_toolkit.py` 来定义ARMS相关的工具。
+3. api_error.py 是一些OpenApi 错误码的定义,如果你的工具实现直接调用了阿里云OpenApi，可以在这里定义错误码来给出友好提示
+4. utils.py 是一些工具类
+5. tests 目录下是测试用例
+
 ## 如何增加一个 MCP 工具
 
-版本要求 >=3.10（MCP SDK 的版本要求）
+Python 版本要求 >=3.10（MCP SDK 的版本要求）,建议通过venv或者 conda 来创建虚拟环境
 
 ## 任务拆解
 
@@ -14,8 +47,9 @@
 3. 尽量复用已有工具，不要新增相同含义的工具
 
 ## 工具定义
-
-在 `src/mcp_server_aliyun_observability/tools.py` 中定义工具，通过增加 `@self.server.tool()` 注解来定义一个工具。
+1. 新增的工具位于 `src/mcp_server_aliyun_observability/toolkit` 目录下，通过增加 `@self.server.tool()` 注解来定义一个工具。
+2. 当前可按照产品来组织文件，比如 `src/mcp_server_aliyun_observability/toolkit/sls_toolkit.py` 来定义SLS相关的工具，`src/mcp_server_aliyun_observability/toolkit/arms_toolkit.py` 来定义ARMS相关的工具。
+3. 工具上需要增加@tool 注解
 
 ### 1. 工具命名
 
@@ -46,17 +80,20 @@ def sls_list_projects(
   - 参数个数尽量控制在五个以内，超过需考虑拆分工具
   - 相同含义字段定义保持一致（避免一会叫 `project_name`，一会叫 `project`）
   - 参数类型使用基础类型（str, int, list, dict 等），不使用自定义类型
+  - 如果参数可选值是固定枚举类，在字段描述中要说明可选择的值，同时在代码方法里面也要增加可选值的校验
 
 ### 3. 返回值设计
 
 * 优先使用基础类型，不使用自定义类型
 * 控制返回内容长度，特别是数据查询类场景考虑分页返回，防止用户上下文占用过大
 * 返回内容字段清晰，数据类最好转换为明确的 key-value 形式
+* 针对无返回值的情况，比如数据查询为空，不要直接返回空列表，可以返回文本提示比如 `"没有找到相关数据"`供大模型使用
 
 ### 4. 异常处理
 
 * 直接调用 API 且异常信息清晰的情况下可不做处理，直接抛出原始错误日志有助于模型识别
 * 如遇 SYSTEM_ERROR 等模糊不清的异常，应处理后返回友好提示
+* 做好重试机制，比如网络抖动、服务端限流等，避免模型因此类问题而重复调用
 
 ### 5. 工具描述
 
@@ -99,8 +136,14 @@ Args:
 Returns:
     包含项目信息的字典列表，每个字典包含project_name、description和region_id
 ```
-
 * 可以使用 LLM 生成初步描述，然后根据需要进行调整完善
 
+### 如何测试
 
+#### [阶段1] 不基于 LLM，使用测试用例测试
 
+1. 补充下测试用例，在 tests目录下,可有参考 test_sls_toolkit.py 的实现
+2. 使用 `pytest` 运行测试用例，保证功能是正确可用
+
+#### [阶段2] 基于 LLM，使用测试用例测试
+1. 通过 Cursor,Client 等客户端来测试和大模型集成后的最终效果
