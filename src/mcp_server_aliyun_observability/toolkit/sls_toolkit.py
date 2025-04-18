@@ -133,7 +133,10 @@ class SLSToolkit:
 
             ## 功能概述
 
-            该工具可以列出指定SLS项目中的所有日志库，支持通过日志库名称进行模糊搜索。如果不提供日志库名称，则返回项目中的所有日志库。
+            该工具可以列出指定SLS项目中的所有日志库，日志库类型分为两种：
+            - logs: 日志类型
+            - metrics: 指标类型 - 只有当用户明确说明是指标库或者时序库时，才会返回指标类型日志库
+            支持通过日志库名称进行模糊搜索。如果不提供日志库名称，则返回项目中的所有日志库。
 
             ## 使用场景
 
@@ -143,9 +146,9 @@ class SLSToolkit:
 
             ## 数据类型筛选
 
-            可以通过指定log_store_type参数来筛选日志库类型：
-            - logs: 普通日志类型日志库
-            - metrics: 指标类型日志库
+            可以通过指定log_store_type参数来筛选logstore类型：
+            - logs: 日志类型
+            - metrics: 指标类型 - 只有当用户明确说明是指标库或者时序库时，才会返回指标类型日志库
 
             ## 查询示例
 
@@ -163,7 +166,8 @@ class SLSToolkit:
             Returns:
                 日志库名称的字符串列表
             """
-
+            if log_store_type not in ["logs", "metrics"]:
+                return "log_store_type must be logs or metrics"
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
             ].with_region(region_id)
