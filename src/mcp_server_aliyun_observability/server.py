@@ -7,6 +7,7 @@ from mcp.server.fastmcp import FastMCP
 
 from mcp_server_aliyun_observability.toolkit.arms_toolkit import ArmsToolkit
 from mcp_server_aliyun_observability.toolkit.sls_toolkit import SLSToolkit
+from mcp_server_aliyun_observability.toolkit.cms_toolkit import CMSToolkit
 from mcp_server_aliyun_observability.toolkit.util_toolkit import UtilToolkit
 from mcp_server_aliyun_observability.utils import (
     ArmsClientWrapper,
@@ -20,9 +21,11 @@ def create_lifespan(credential: Optional[CredentialWrapper] = None):
     async def lifespan(fastmcp: FastMCP) -> AsyncIterator[dict]:
         sls_client = SLSClientWrapper(credential)
         arms_client = ArmsClientWrapper(credential)
+        cms_client = SLSClientWrapper(credential)
         yield {
             "sls_client": sls_client,
             "arms_client": arms_client,
+            "cms_client": cms_client,
         }
 
     return lifespan
@@ -43,6 +46,7 @@ def init_server(
     SLSToolkit(mcp_server)
     UtilToolkit(mcp_server)
     ArmsToolkit(mcp_server)
+    CMSToolkit(mcp_server)
     return mcp_server
 
 
@@ -52,7 +56,5 @@ def server(
     log_level: str = "INFO",
     transport_port: int = 8000,
 ):
-    server: FastMCP = init_server(
-        credential, log_level, transport_port
-    )
+    server: FastMCP = init_server(credential, log_level, transport_port)
     server.run(transport)
