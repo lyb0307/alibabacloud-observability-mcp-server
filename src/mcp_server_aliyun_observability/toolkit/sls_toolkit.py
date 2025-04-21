@@ -120,6 +120,10 @@ class SLSToolkit:
             project: str = Field(..., description="sls project name,must exact match"),
             log_store: str = Field(None, description="log store name,fuzzy search"),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
+            is_metric_store: bool = Field(
+                False,
+                description="is metric store,default is False,only use want to find metric store",
+            ),
             log_store_type: str = Field(
                 None,
                 description="log store type,default is logs,should be logs,metrics",
@@ -133,9 +137,7 @@ class SLSToolkit:
 
             ## 功能概述
 
-            该工具可以列出指定SLS项目中的所有日志库，日志库类型分为两种：
-            - logs: 日志类型
-            - metrics: 指标类型 - 只有当用户明确说明是指标库或者时序库时，才会返回指标类型日志库
+            该工具可以列出指定SLS项目中的所有日志库，如果不选，则默认为日志库类型
             支持通过日志库名称进行模糊搜索。如果不提供日志库名称，则返回项目中的所有日志库。
 
             ## 使用场景
@@ -144,11 +146,9 @@ class SLSToolkit:
             - 当需要获取项目中所有可用的日志库列表时
             - 当需要根据日志库名称的部分内容查找相关日志库时
 
-            ## 数据类型筛选
+            ## 是否指标库
 
-            可以通过指定log_store_type参数来筛选logstore类型：
-            - logs: 日志类型
-            - metrics: 指标类型 - 只有当用户明确说明是指标库或者时序库时，才会返回指标类型日志库
+            如果需要查找指标或者时序相关的库,请将is_metric_store参数设置为True
 
             ## 查询示例
 
@@ -160,14 +160,14 @@ class SLSToolkit:
                 project: SLS项目名称，必须精确匹配
                 log_store: 日志库名称，支持模糊搜索
                 limit: 返回结果的最大数量，范围1-100，默认10
-                log_store_type: 日志库类型，可选值为logs或metrics，默认为logs
+                is_metric_store: 是否指标库，可选值为True或False，默认为False
                 region_id: 阿里云区域ID
 
             Returns:
                 日志库名称的字符串列表
             """
-            if log_store_type not in ["logs", "metrics"]:
-                return "log_store_type must be logs or metrics"
+            if is_metric_store:
+                log_store_type = "metrics"
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
             ].with_region(region_id)
@@ -179,9 +179,16 @@ class SLSToolkit:
             response: ListLogStoresResponse = sls_client.list_log_stores(
                 project, request
             )
+            log_store_count = response.body.total
+            log_store_list = response.body.logstores
             return {
-                "total": response.body.total,
-                "logstores": response.body.logstores,
+                "total": log_store_count,
+                "logstores": log_store_list,
+                "messager": (
+                    "Sorry not found logstore,please make sure your project and region or logstore name is correct, if you want to find metric store,please check is_metric_store parameter"
+                    if log_store_count == 0
+                    else "success"
+                ),
             }
 
         @self.server.tool()

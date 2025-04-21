@@ -77,3 +77,22 @@ async def test_sls_execute_query_success(
     logger.info(text)
     assert text["data"] is not None
     assert text["message"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_sls_list_logstores_success(
+    tool_manager: SLSToolkit,
+    mcp_server: FastMCP,
+    mock_request_context: Context,
+):
+    """测试SLS列出日志库成功的情况"""
+    tool = mcp_server._tool_manager.get_tool("sls_list_logstores")
+    text = await tool.run(
+        {
+            "project": os.getenv("TEST_PROJECT"),
+            "region_id": os.getenv("TEST_REGION"),
+            "limit": 10,
+        },
+        context=mock_request_context,
+    )
+    assert len(text["logstores"]) > 0
