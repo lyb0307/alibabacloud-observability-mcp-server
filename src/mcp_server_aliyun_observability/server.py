@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
+from alibabacloud_credentials.client import Client as CredClient
 from mcp.server import FastMCP
 from mcp.server.fastmcp import FastMCP
 
@@ -9,15 +10,16 @@ from mcp_server_aliyun_observability.toolkit.sls_toolkit import SLSToolkit
 from mcp_server_aliyun_observability.toolkit.util_toolkit import UtilToolkit
 from mcp_server_aliyun_observability.utils import (
     ArmsClientWrapper,
+    CredentialWrapper,
     SLSClientWrapper,
 )
 
 
-def create_lifespan(access_key_id: str, access_key_secret: str):
+def create_lifespan(credential: Optional[CredentialWrapper] = None):
     @asynccontextmanager
     async def lifespan(fastmcp: FastMCP) -> AsyncIterator[dict]:
-        sls_client = SLSClientWrapper(access_key_id, access_key_secret)
-        arms_client = ArmsClientWrapper(access_key_id, access_key_secret)
+        sls_client = SLSClientWrapper(credential)
+        arms_client = ArmsClientWrapper(credential)
         yield {
             "sls_client": sls_client,
             "arms_client": arms_client,
@@ -27,15 +29,14 @@ def create_lifespan(access_key_id: str, access_key_secret: str):
 
 
 def init_server(
-    access_key_id: str,
-    access_key_secret: str,
+    credential: Optional[CredentialWrapper] = None,
     log_level: str = "INFO",
     transport_port: int = 8000,
 ):
     """initialize the global mcp server instance"""
     mcp_server = FastMCP(
         name="mcp_aliyun_observability_server",
-        lifespan=create_lifespan(access_key_id, access_key_secret),
+        lifespan=create_lifespan(credential),
         log_level=log_level,
         port=transport_port,
     )
@@ -46,13 +47,12 @@ def init_server(
 
 
 def server(
-    access_key_id: str,
-    access_key_secret: str,
-    transport: str,
-    log_level: str,
-    transport_port: int,
+    credential: Optional[CredentialWrapper] = None,
+    transport: str = "stdio",
+    log_level: str = "INFO",
+    transport_port: int = 8000,
 ):
     server: FastMCP = init_server(
-        access_key_id, access_key_secret, log_level, transport_port
+        credential, log_level, transport_port
     )
     server.run(transport)
