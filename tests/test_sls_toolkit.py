@@ -66,7 +66,7 @@ async def test_sls_execute_query_success(
         {
             "project": os.getenv("TEST_PROJECT"),
             "log_store": os.getenv("TEST_LOG_STORE"),
-            "query": "pid:aokcdqn3ly@b57c445b5d36e86 | SELECT serviceName, SUM(duration)/1000000 AS total_duration_ms FROM log GROUP BY serviceName ORDER BY total_duration_ms DESC LIMIT 10",
+            "query": "* | select count(*) as total",
             "from_timestamp": int(datetime.now().timestamp()) - 3600,
             "to_timestamp": int(datetime.now().timestamp()),
             "limit": 10,
@@ -74,8 +74,14 @@ async def test_sls_execute_query_success(
         },
         context=mock_request_context,
     )
-    logger.info(text)
     assert text["data"] is not None
+    """
+     response_body: List[Dict[str, Any]] = response.body
+            result = {
+                "data": response_body,
+    """
+    item = text["data"][0]
+    assert item["total"] is not None
     assert text["message"] == "success"
 
 
@@ -96,3 +102,42 @@ async def test_sls_list_logstores_success(
         context=mock_request_context,
     )
     assert len(text["logstores"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_sls_describe_logstore_success(
+    tool_manager: SLSToolkit,
+    mcp_server: FastMCP,
+    mock_request_context: Context,
+):
+    """测试SLS描述日志库成功的情况"""
+    tool = mcp_server._tool_manager.get_tool("sls_describe_logstore")
+    text = await tool.run(
+        {
+            "project": os.getenv("TEST_PROJECT"),
+            "log_store": os.getenv("TEST_LOG_STORE"),
+            "region_id": os.getenv("TEST_REGION"),
+        },
+        context=mock_request_context,
+    )
+    assert text is not None
+
+
+@pytest.mark.asyncio
+async def test_sls_translate_natural_language_to_query_success(
+    tool_manager: SLSToolkit,
+    mcp_server: FastMCP,
+    mock_request_context: Context,
+):
+    """测试SLS自然语言转换为查询语句成功的情况"""
+    tool = mcp_server._tool_manager.get_tool("sls_translate_natural_language_to_query")
+    text = await tool.run(
+        {
+            "project": os.getenv("TEST_PROJECT"),
+            "log_store": os.getenv("TEST_LOG_STORE"),
+            "text": "我想查询最近10分钟内，所有日志库的日志数量",
+            "region_id": os.getenv("TEST_REGION"),
+        },
+        context=mock_request_context,
+    )
+    assert text is not None
