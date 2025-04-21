@@ -1,22 +1,14 @@
 import hashlib
 import logging
 from functools import wraps
-from typing import (
-    Any,
-    Callable,
-    Optional,
-    TypeVar,
-    cast,
-)
+from typing import Any, Callable, Optional, TypeVar, cast
 
 from alibabacloud_arms20190808.client import Client as ArmsClient
+from alibabacloud_credentials.client import Client as CredClient
 from alibabacloud_sls20201230.client import Client
 from alibabacloud_sls20201230.client import Client as SLSClient
-from alibabacloud_sls20201230.models import (
-    CallAiToolsRequest,
-    CallAiToolsResponse,
-    IndexJsonKey,
-)
+from alibabacloud_sls20201230.models import (CallAiToolsRequest,
+                                             CallAiToolsResponse, IndexJsonKey)
 from alibabacloud_tea_openapi import models as open_api_models
 from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context
@@ -26,23 +18,40 @@ from mcp_server_aliyun_observability.api_error import TEQ_EXCEPTION_ERROR
 
 logger = logging.getLogger(__name__)
 
+class CredentialWrapper:
+    """
+    A wrapper for aliyun credentials
+    """
 
+    access_key_id: str
+    access_key_secret: str
+
+    def __init__(self, access_key_id: str, access_key_secret: str):
+        self.access_key_id = access_key_id
+        self.access_key_secret = access_key_secret
+    
+    
+    
 class SLSClientWrapper:
     """
     A wrapper for aliyun client
     """
 
-    def __init__(self, access_key_id: str, access_key_secret: str):
-        self.access_key_id = access_key_id
-        self.access_key_secret = access_key_secret
+    def __init__(self, credential: Optional[CredentialWrapper] = None):
+        self.credential = credential
+    
 
     def with_region(
         self, region: str = None, endpoint: Optional[str] = None
     ) -> SLSClient:
-        config = open_api_models.Config(
-            access_key_id=self.access_key_id,
-            access_key_secret=self.access_key_secret,
-        )
+        if self.credential:
+            config = open_api_models.Config(
+                access_key_id=self.credential.access_key_id,
+                access_key_secret=self.credential.access_key_secret,
+            )
+        else:
+            credentialsClient = CredClient()
+            config = open_api_models.Config(credential=credentialsClient)
         config.endpoint = f"{region}.log.aliyuncs.com"
         return SLSClient(config)
 
@@ -52,15 +61,18 @@ class ArmsClientWrapper:
     A wrapper for aliyun arms client
     """
 
-    def __init__(self, access_key_id: str, access_key_secret: str):
-        self.access_key_id = access_key_id
-        self.access_key_secret = access_key_secret
+    def __init__(self, credential: Optional[CredentialWrapper] = None):
+        self.credential = credential
 
     def with_region(self, region: str, endpoint: Optional[str] = None) -> ArmsClient:
-        config = open_api_models.Config(
-            access_key_id=self.access_key_id,
-            access_key_secret=self.access_key_secret,
-        )
+        if self.credential:
+            config = open_api_models.Config(
+                access_key_id=self.credential.access_key_id,
+                access_key_secret=self.credential.access_key_secret,
+            )
+        else:
+            credentialsClient = CredClient()
+            config = open_api_models.Config(credential=credentialsClient)
         config.endpoint = endpoint or f"arms.{region}.aliyuncs.com"
         return ArmsClient(config)
 
@@ -180,3 +192,4 @@ def text_to_sql(
     except Exception as e:
         logger.error(f"调用SLS AI工具失败: {str(e)}")
         raise
+
