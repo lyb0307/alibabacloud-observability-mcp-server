@@ -1,4 +1,8 @@
 ## 阿里云可观测MCP服务
+<p align="center">
+  <a href="./README.md"><img alt="中文自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9""></a>
+  <a href="./README_EN.md"><img alt="英文自述文件" src="https://img.shields.io/badge/English-d9d9d9")
+</p>
 
 ### 简介
 
