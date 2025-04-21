@@ -9,6 +9,7 @@ dependencies = [
     "pydantic>=2.10.0",
     "alibabacloud_arms20190808==8.0.0",
     "alibabacloud_sls20201230==5.7.0",
+    "alibabacloud_credentials>=1.0.1",
     "tenacity>=8.0.0",
 ]
 
