@@ -1,5 +1,9 @@
 # 版本更新
 
+## 0.1.9
+- 支持 STS Token 方式登录，可通过环境变量ALIBABA_CLOUD_SECURITY_TOKEN 指定
+- 修改 README.md 文档，增加 Cursor，Cline 等集成说明以及 UV 命令等说明
+
 ## 0.1.8
 - 优化 SLS 列出日志库工具，添加日志库类型验证，确保参数符合规范
 
