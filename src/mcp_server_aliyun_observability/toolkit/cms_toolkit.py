@@ -64,6 +64,7 @@ class CMSToolkit:
 
             - 仅支持生成PromQL查询
             - 生成的是查询语句，而非查询结果
+            - 禁止使用sls_execute_query工具执行，两者接口不兼容
 
             ## 最佳实践
 
