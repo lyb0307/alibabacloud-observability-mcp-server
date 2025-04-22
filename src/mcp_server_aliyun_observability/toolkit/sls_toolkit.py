@@ -2,30 +2,25 @@ import logging
 from typing import Any, Dict, List
 
 from alibabacloud_sls20201230.client import Client
-from alibabacloud_sls20201230.models import (
-    CallAiToolsRequest,
-    CallAiToolsResponse,
-    GetIndexResponse,
-    GetIndexResponseBody,
-    GetLogsRequest,
-    GetLogsResponse,
-    IndexJsonKey,
-    IndexKey,
-    ListLogStoresRequest,
-    ListLogStoresResponse,
-    ListProjectRequest,
-    ListProjectResponse,
-)
+from alibabacloud_sls20201230.models import (CallAiToolsRequest,
+                                             CallAiToolsResponse,
+                                             GetIndexResponse,
+                                             GetIndexResponseBody,
+                                             GetLogsRequest, GetLogsResponse,
+                                             IndexJsonKey, IndexKey,
+                                             ListLogStoresRequest,
+                                             ListLogStoresResponse,
+                                             ListProjectRequest,
+                                             ListProjectResponse)
 from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
+from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
+                      wait_fixed)
 
-from mcp_server_aliyun_observability.utils import (
-    handle_tea_exception,
-    parse_json_keys,
-    text_to_sql,
-)
+from mcp_server_aliyun_observability.utils import (handle_tea_exception,
+                                                   parse_json_keys,
+                                                   text_to_sql)
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -117,7 +112,7 @@ class SLSToolkit:
         )
         def sls_list_logstores(
             ctx: Context,
-            project: str = Field(..., description="sls project name,must exact match"),
+            project: str = Field(..., description="sls project name,must exact match,should not contain chinese characters"),
             log_store: str = Field(None, description="log store name,fuzzy search"),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
             is_metric_store: bool = Field(
@@ -145,6 +140,7 @@ class SLSToolkit:
             - 当需要查找特定项目下是否存在某个日志库时
             - 当需要获取项目中所有可用的日志库列表时
             - 当需要根据日志库名称的部分内容查找相关日志库时
+            - 如果从上下文未指定 project参数，除非用户说了遍历，则可使用 sls_list_projects 工具获取项目列表
 
             ## 是否指标库
 
@@ -167,7 +163,14 @@ class SLSToolkit:
                 日志库名称的字符串列表
             """
             if is_metric_store:
-                log_store_type = "metrics"
+                log_store_type = "Metrics"
+                
+            if project == "":
+                return {
+                    "total": 0,
+                    "logstores": [],
+                    "messager": "Please specify the project name,if you want to list all projects,please use sls_list_projects tool",
+                }
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
             ].with_region(region_id)
