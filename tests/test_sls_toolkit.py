@@ -8,7 +8,8 @@ from mcp.shared.context import RequestContext
 
 from mcp_server_aliyun_observability.server import create_lifespan
 from mcp_server_aliyun_observability.toolkit.sls_toolkit import SLSToolkit
-from mcp_server_aliyun_observability.utils import SLSClientWrapper
+from mcp_server_aliyun_observability.utils import (CredentialWrapper,
+                                                   SLSClientWrapper)
 
 dotenv.load_dotenv()
 
@@ -23,7 +24,10 @@ def mcp_server():
     mcp_server = FastMCP(
         name="mcp_aliyun_observability_server",
         lifespan=create_lifespan(
-            os.getenv("ALIYUN_ACCESS_KEY_ID"), os.getenv("ALIYUN_ACCESS_KEY_SECRET")
+            credential=CredentialWrapper(
+                access_key_id=os.getenv("ALIYUN_ACCESS_KEY_ID"),
+                access_key_secret=os.getenv("ALIYUN_ACCESS_KEY_SECRET"),
+            ),
         ),
     )
     return mcp_server
@@ -39,8 +43,10 @@ def mock_request_context():
             session=None,
             lifespan_context={
                 "sls_client": SLSClientWrapper(
-                    os.getenv("ALIYUN_ACCESS_KEY_ID"),
-                    os.getenv("ALIYUN_ACCESS_KEY_SECRET"),
+                    credential=CredentialWrapper(
+                        access_key_id=os.getenv("ALIYUN_ACCESS_KEY_ID"),
+                        access_key_secret=os.getenv("ALIYUN_ACCESS_KEY_SECRET"),
+                    ),
                 ),
             },
         )
@@ -86,6 +92,25 @@ async def test_sls_execute_query_success(
 
 
 @pytest.mark.asyncio
+async def test_sls_list_projects_success(
+    tool_manager: SLSToolkit,
+    mcp_server: FastMCP,
+    mock_request_context: Context,
+):
+    """测试SLS列出项目成功的情况"""
+    tool = mcp_server._tool_manager.get_tool("sls_list_projects")
+    text = await tool.run(
+        {
+            "project": "",
+            "log_store": "",
+            "limit": 10,
+            "region_id": os.getenv("TEST_REGION"),
+        },
+        context=mock_request_context,
+    )
+    assert len(text["projects"]) > 0
+
+@pytest.mark.asyncio
 async def test_sls_list_logstores_success(
     tool_manager: SLSToolkit,
     mcp_server: FastMCP,
@@ -103,6 +128,26 @@ async def test_sls_list_logstores_success(
     )
     assert len(text["logstores"]) > 0
 
+
+@pytest.mark.asyncio
+async def test_sls_list_metric_store_success(
+    tool_manager: SLSToolkit,
+    mcp_server: FastMCP,
+    mock_request_context: Context,
+):
+    """测试SLS列出日志库成功的情况"""
+    tool = mcp_server._tool_manager.get_tool("sls_list_logstores")
+    text = await tool.run(
+        {
+            "project": "",
+            "log_store": "",
+            "limit": 10,
+            "is_metric_store": True,
+            "region_id": "cn-hangzhou",
+        },
+        context=mock_request_context,
+    )
+    assert len(text["logstores"]) > 0
 
 @pytest.mark.asyncio
 async def test_sls_describe_logstore_success(
