@@ -35,7 +35,7 @@ class CMSToolkit:
             retry=retry_if_exception_type(Exception),
             reraise=True,
         )
-        def prom_translate_natural_language_to_query(
+        def cms_translate_natural_language_to_query(
             ctx: Context,
             text: str = Field(
                 ...,
@@ -87,7 +87,7 @@ class CMSToolkit:
                 生成的PromQL查询语句
             """
             try:
-                prom_client: Client = ctx.request_context.lifespan_context[
+                cms_client: Client = ctx.request_context.lifespan_context[
                     "cms_client"
                 ].with_region("cn-shanghai")
                 request: CallAiToolsRequest = CallAiToolsRequest()
@@ -103,7 +103,7 @@ class CMSToolkit:
                 runtime.read_timeout = 60000
                 runtime.connect_timeout = 60000
                 tool_response: CallAiToolsResponse = (
-                    prom_client.call_ai_tools_with_options(
+                    cms_client.call_ai_tools_with_options(
                         request=request, headers={}, runtime=runtime
                     )
                 )
@@ -112,5 +112,5 @@ class CMSToolkit:
                     data = data.split("------answer------\n")[1]
                 return data
             except Exception as e:
-                logger.error(f"调用Prom AI工具失败: {str(e)}")
+                logger.error(f"调用CMS AI工具失败: {str(e)}")
                 raise
