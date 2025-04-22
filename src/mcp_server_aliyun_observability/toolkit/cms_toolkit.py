@@ -35,7 +35,7 @@ class CMSToolkit:
             retry=retry_if_exception_type(Exception),
             reraise=True,
         )
-        def cms_translate_natural_language_to_query(
+        def cms_translate_natural_language_to_promql(
             ctx: Context,
             text: str = Field(
                 ...,
