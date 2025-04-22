@@ -1,5 +1,8 @@
 # 版本更新
 
+## 0.2.0
+- 增加 cms_translate_natural_language_to_promql 工具，根据自然语言生成 promql 查询语句
+
 ## 0.1.9
 - 支持 STS Token 方式登录，可通过环境变量ALIBABA_CLOUD_SECURITY_TOKEN 指定
 - 修改 README.md 文档，增加 Cursor，Cline 等集成说明以及 UV 命令等说明
