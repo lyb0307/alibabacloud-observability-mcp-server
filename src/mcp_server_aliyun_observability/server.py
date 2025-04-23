@@ -45,7 +45,7 @@ def init_server(
     )
     SLSToolkit(mcp_server)
     UtilToolkit(mcp_server)
-    # ArmsToolkit(mcp_server)
+    ArmsToolkit(mcp_server)
     CMSToolkit(mcp_server)
     return mcp_server
 

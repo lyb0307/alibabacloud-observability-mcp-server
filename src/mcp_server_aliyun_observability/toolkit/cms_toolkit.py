@@ -39,12 +39,12 @@ class CMSToolkit:
         """register cms and prometheus related tools functions"""
 
         @self.server.tool()
-        def cms_get_alert_events(
+        def cms_describe_alert_events(
             ctx: Context,
             from_timestamp: int = Field(
-                ..., description="from timestamp,unit is second"
+                ..., description="from timestamp,unit is second, like 1745384910"
             ),
-            to_timestamp: int = Field(..., description="to timestamp,unit is second"),
+            to_timestamp: int = Field(..., description="to timestamp,unit is second, like 1745388510"),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
             region_id: str = Field(
                 default=...,
@@ -81,8 +81,9 @@ class CMSToolkit:
                 b. 集群cloud-controller-manager服务不可用有xx条: 占比xxx。
                    告警规则为："duration":60,"expr":"((sum(up{job="ack-scheduler"}) <= 0) or (absent(sum(up{job="ack-scheduler"})))) > 0","type":"PROMQL_QUERY"
             4. 触发告警事件的资源占比主要有
-                a. pod:otel-demo-opensearch-0 有xx条，占比xxx。
-                b. instance:10.206.180.153:9100 有xx条，占比xxx。
+                a. pod:otel-demo-opensearch-0,实体id为e33136c8bff0bfe5ddf1fc4404a7d795，有xx条
+                b. instance:10.206.180.153:9100，实体id为d782274eb3167ca58e96e96a6be2d400，有xx条
+                c. xxx
             5. 这些告警主要集中在集群的关键组件上，建议检查相关服务的状态和健康状况。如果属于误告警，请调整规则阈值。
 
             Args:
@@ -97,14 +98,14 @@ class CMSToolkit:
             """
             try:
                 # get project and logstore
-                sls_client: Client = ctx.request_context.lifespan_context[
-                    "sls_client"
+                cms_client: Client = ctx.request_context.lifespan_context[
+                    "cms_client"
                 ].with_region(region_id)
                 request: ListProjectRequest = ListProjectRequest(
                     project_name="cms-alert-center",
                     size=100,
                 )
-                response: ListProjectResponse = sls_client.list_project(request)
+                response: ListProjectResponse = cms_client.list_project(request)
                 projects = [
                     {
                         "project_name": project.project_name,
@@ -120,10 +121,14 @@ class CMSToolkit:
                     logstore_name="alert-rule-event-default",
                     size=limit,
                 )
-                response: ListLogStoresResponse = sls_client.list_log_stores(
+                response: ListLogStoresResponse = cms_client.list_log_stores(
                     project, request
                 )
-                log_store_list = response.body.logstores
+                log_store_list = [
+                    log_store
+                    for log_store in response.body.logstores
+                    if log_store.endswith(region_id)
+                ]
 
                 log_store = log_store_list[0]
 
@@ -138,7 +143,7 @@ class CMSToolkit:
                     to=to_timestamp,
                     line=limit,
                 )
-                response: GetLogsResponse = sls_client.get_logs_with_options(
+                response: GetLogsResponse = cms_client.get_logs_with_options(
                     project, log_store, request, headers={}, runtime=runtime
                 )
                 alert_event_total: List[Dict[str, Any]] = response.body
@@ -146,12 +151,12 @@ class CMSToolkit:
 
                 # 获取告警按照严重等级信息
                 request: GetLogsRequest = GetLogsRequest(
-                    query="* | SELECT severity, COUNT(*) AS alert_count FROM log GROUP BY severity",
+                    query="* | SELECT severity, COUNT(*) AS alert_count FROM log GROUP BY severity order by alert_count desc",
                     from_=from_timestamp,
                     to=to_timestamp,
                     line=limit,
                 )
-                response: GetLogsResponse = sls_client.get_logs_with_options(
+                response: GetLogsResponse = cms_client.get_logs_with_options(
                     project, log_store, request, headers={}, runtime=runtime
                 )
                 alert_severity_info: List[Dict[str, Any]] = response.body
@@ -164,7 +169,7 @@ class CMSToolkit:
                     to=to_timestamp,
                     line=limit,
                 )
-                response: GetLogsResponse = sls_client.get_logs_with_options(
+                response: GetLogsResponse = cms_client.get_logs_with_options(
                     project, log_store, request, headers={}, runtime=runtime
                 )
                 alert_rule_info: List[Dict[str, Any]] = response.body
@@ -172,12 +177,12 @@ class CMSToolkit:
 
                 # 获取告警事件按照资源维度的信息
                 request: GetLogsRequest = GetLogsRequest(
-                    query="type:alert | set session mode=scan;  SELECT json_extract(resource, '$.entity') as entity, COUNT(*) AS count FROM log GROUP BY (entity) ORDER BY count DESC limit 100",
+                    query="type:alert | set session mode=scan;  SELECT json_extract(resource, '$.entity') as entity, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (entity) ORDER BY count DESC limit 100",
                     from_=from_timestamp,
                     to=to_timestamp,
                     line=limit,
                 )
-                response: GetLogsResponse = sls_client.get_logs_with_options(
+                response: GetLogsResponse = cms_client.get_logs_with_options(
                     project, log_store, request, headers={}, runtime=runtime
                 )
                 alert_resource_info: List[Dict[str, Any]] = response.body
