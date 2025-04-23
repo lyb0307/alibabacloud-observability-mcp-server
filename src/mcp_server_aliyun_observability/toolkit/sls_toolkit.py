@@ -303,9 +303,9 @@ class SLSToolkit:
             log_store: str = Field(..., description="sls log store name"),
             query: str = Field(..., description="query"),
             from_timestamp: int = Field(
-                ..., description="from timestamp,unit is second"
+                ..., description="from timestamp,unit is second,should be unix timestamp"
             ),
-            to_timestamp: int = Field(..., description="to timestamp,unit is second"),
+            to_timestamp: int = Field(..., description="to timestamp,unit is second,should be unix timestamp"),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
             region_id: str = Field(
                 default=...,
