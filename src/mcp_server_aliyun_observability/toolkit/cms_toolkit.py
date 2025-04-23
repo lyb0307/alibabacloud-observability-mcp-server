@@ -39,12 +39,14 @@ class CMSToolkit:
         """register cms and prometheus related tools functions"""
 
         @self.server.tool()
-        def cms_describe_alert_events(
+        def cms_summarize_alert_events(
             ctx: Context,
             from_timestamp: int = Field(
                 ..., description="from timestamp,unit is second, like 1745384910"
             ),
-            to_timestamp: int = Field(..., description="to timestamp,unit is second, like 1745388510"),
+            to_timestamp: int = Field(
+                ..., description="to timestamp,unit is second, like 1745388510"
+            ),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
             region_id: str = Field(
                 default=...,
