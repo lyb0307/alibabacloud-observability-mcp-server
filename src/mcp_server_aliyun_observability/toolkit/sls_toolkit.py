@@ -14,6 +14,7 @@ from alibabacloud_sls20201230.models import (CallAiToolsRequest,
                                              ListProjectResponse)
 from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.fastmcp.prompts import base
 from pydantic import Field
 from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
                       wait_fixed)
@@ -38,7 +39,29 @@ class SLSToolkit:
         """
         self.server = server
         self._register_sls_tools()
-
+        self._register_prompts()
+        
+        
+    def _register_prompts(self):
+        """register sls related prompts functions"""
+        
+        @self.server.prompt(name="sls 日志查询 prompt",description="当用户需要查询 sls 日志时，可以调用该 prompt来获取过程")
+        def query_sls_logs(question: str) -> str:
+            """当用户需要查询 sls 日志时，可以调用该 prompt来获取过程"""
+            return [
+                base.UserMessage("基于以下问题查询下对应的 sls日志:"),
+                base.UserMessage(
+                    f"问题: {question}"
+                ),
+                base.UserMessage("过程如下:"),
+                base.UserMessage(content="1.首先尝试从上下文提取有效的 project 和 logstore 信息,如果上下文没有提供，请使用 sls_list_projects 和 sls_list_logstores 工具获取"),
+                base.UserMessage(content="2.如果问题里面已经明确包含了查询语句，则直接使用，如果问题里面没有明确包含查询语句，则需要使用 sls_translate_natural_language_to_log_query 工具生成查询语句"),
+                base.UserMessage(
+                    "3. 最后使用 sls_execute_query 工具执行查询语句，获取查询结果"
+                ),
+                base.UserMessage("3. 返回查询到的日志"),
+            ]
+            
     def _register_sls_tools(self):
         """register sls related tools functions"""
 
@@ -366,7 +389,7 @@ class SLSToolkit:
             retry=retry_if_exception_type(Exception),
             reraise=True,
         )
-        def sls_translate_natural_language_to_query(
+        def sls_translate_natural_language_to_log_query(
             ctx: Context,
             text: str = Field(
                 ...,
@@ -383,7 +406,7 @@ class SLSToolkit:
 
             ## 功能概述
 
-            该工具可以将自然语言描述转换为有效的SLS查询语句，便于用户使用自然语言表达查询需求。
+            该工具可以将自然语言描述转换为有效的SLS查询语句，便于用户使用自然语言表达查询需求。用户有任何 SLS 日志查询需求时，都需要优先使用该工具。
 
             ## 使用场景
 
