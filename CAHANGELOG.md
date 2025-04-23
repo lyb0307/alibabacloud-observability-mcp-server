@@ -1,5 +1,9 @@
 # 版本更新
 
+## 0.2.1
+- 优化 SLS 查询工具，增加 from_timestamp 和 to_timestamp 参数，确保查询语句的正确性
+- 增加 SLS 日志查询的 prompts
+
 ## 0.2.0
 - 增加 cms_translate_natural_language_to_promql 工具，根据自然语言生成 promql 查询语句
 
