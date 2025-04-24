@@ -10,7 +10,10 @@ Alibaba Cloud Observability MCP Server provides a set of tools for accessing var
 Currently, the MCP tools primarily focus on Alibaba Cloud Log Service, with support for other products being added incrementally. The detailed tools are as follows:
 
 ### Version History
-You can check the [version history](./CAHANGELOG.md)
+You can check the [CHANGELOG.md](./CHANGELOG.md)
+
+### FAQ
+You can check the [FAQ.md](./FAQ.md)
 
 ##### Example Scenarios
 

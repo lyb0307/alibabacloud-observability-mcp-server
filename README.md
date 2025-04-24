@@ -14,8 +14,10 @@
 目前提供的 MCP 工具以阿里云日志服务为主，其他产品会陆续支持，工具详细如下:
 
 ### 版本记录
-可以查看 [版本记录](./CAHANGELOG.md)
+可以查看 [CHANGELOG.md](./CHANGELOG.md)
 
+### 常见问题
+可以查看 [FAQ.md](./FAQ.md)
 
 ##### 场景举例
 
@@ -116,10 +118,17 @@ python -m mcp_server_aliyun_observability --transport sse --access-key-id <your_
 - `--transport-port` 指定传输端口，默认值为 `8000`,仅当 `--transport` 为 `sse` 时有效
 
 2. 使用uv 命令启动
-   
+   可以指定下版本号，会自动拉取对应依赖，默认是 studio 方式启动
 ```bash
-uv run mcp-server-aliyun-observability 
+uvx --from 'mcp-server-aliyun-observability==0.2.1' mcp-server-aliyun-observability 
 ```
+
+3. 使用 uvx 命令启动
+
+```bash
+uvx run mcp-server-aliyun-observability
+```
+
 ### 从源码安装
 
 ```bash
