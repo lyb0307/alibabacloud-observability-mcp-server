@@ -1,5 +1,6 @@
 import hashlib
 import logging
+from datetime import datetime
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar, cast
 
@@ -104,6 +105,16 @@ def get_arms_user_trace_log_store(user_id: int, region: str) -> dict[str, str]:
     return {"project": project, "log_store": log_store}
 
 
+def get_current_time() -> str:
+    """
+    获取当前时间
+    """
+    return {
+        "current_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "current_timestamp": int(datetime.now().timestamp()),
+    }
+
+
 def md5_string(origin: str) -> str:
     """
     计算字符串的MD5值，与Java实现对应
@@ -158,6 +169,23 @@ def handle_tea_exception(func: Callable[..., T]) -> Callable[..., T]:
                             "message": error["errorMessage"],
                         },
                     )
+            message=e.message
+            if "Max retries exceeded with url" in message:
+                return cast(
+                    T,
+                    {
+                        "solution": """
+                        可能原因:
+                            1.	当前网络不具备访问内网域名的权限（如从公网或不通阿里云 VPC 访问）；
+                            2.	指定 region 错误或不可用；
+                            3.	工具或网络中存在代理、防火墙限制；
+                            如果你需要排查，可以从：
+                            •	尝试 ping 下域名是否可联通
+                            •	查看是否有 VPC endpoint 配置错误等，如果是非VPC 环境，请配置公网入口端点，一般公网端点不会包含-intranet 等字样
+                            """,
+                        "message": e.message,
+                    },
+                )
             raise e
 
     return wrapper
@@ -176,7 +204,7 @@ def text_to_sql(
         params: dict[str, Any] = {
             "project": project,
             "logstore": log_store,
-            "sys.query": text,
+            "sys.query": append_current_time(text),
         }
         request.params = params
         runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
@@ -193,3 +221,12 @@ def text_to_sql(
         logger.error(f"调用SLS AI工具失败: {str(e)}")
         raise
 
+        logger.error(f"调用SLS AI工具失败: {str(e)}")
+        raise
+
+
+def append_current_time(text: str) -> str:
+    """
+    添加当前时间
+    """
+    return f"当前时间: {get_current_time()},问题:{text}"

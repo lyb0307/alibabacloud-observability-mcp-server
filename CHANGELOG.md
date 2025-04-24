@@ -1,5 +1,9 @@
 # 版本更新
 
+## 0.2.2
+- 优化 SLS 查询工具，时间范围不显示传入，由SQL 生成工具直接返回判定
+- sls_list_projects 工具增加个数限制，并且做出提示
+
 ## 0.2.1
 - 优化 SLS 查询工具，增加 from_timestamp 和 to_timestamp 参数，确保查询语句的正确性
 - 增加 SLS 日志查询的 prompts
