@@ -139,11 +139,11 @@ async def test_sls_list_metric_store_success(
     tool = mcp_server._tool_manager.get_tool("sls_list_logstores")
     text = await tool.run(
         {
-            "project": "",
+            "project": "2222",
             "log_store": "",
             "limit": 10,
             "is_metric_store": True,
-            "region_id": "cn-hangzhou",
+            "region_id": os.getenv("TEST_REGION"),
         },
         context=mock_request_context,
     )

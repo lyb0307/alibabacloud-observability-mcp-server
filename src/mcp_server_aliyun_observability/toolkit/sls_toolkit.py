@@ -72,7 +72,7 @@ class SLSToolkit:
                 None, description="project name,fuzzy search"
             ),
             limit: int = Field(
-                default=10, description="limit,max is 100", ge=1, le=100
+                default=50, description="limit,max is 100", ge=1, le=100
             ),
             region_id: str = Field(default=..., description="aliyun region id"),
         ) -> list[dict[str, Any]]:
@@ -117,14 +117,18 @@ class SLSToolkit:
                 size=limit,
             )
             response: ListProjectResponse = sls_client.list_project(request)
-            return [
-                {
-                    "project_name": project.project_name,
-                    "description": project.description,
-                    "region_id": project.region,
+
+            return{
+                "projects": [
+                    {
+                        "project_name": project.project_name,
+                        "description": project.description,
+                        "region_id": project.region,
                 }
                 for project in response.body.projects
-            ]
+            ],
+                "message": f"当前最多支持查询{limit}个项目，未防止返回数据过长，如果需要查询更多项目，您可以提供 project 的关键词来模糊查询"
+            }
 
         @self.server.tool()
         @retry(
@@ -133,11 +137,12 @@ class SLSToolkit:
             retry=retry_if_exception_type(Exception),
             reraise=True,
         )
+        @handle_tea_exception
         def sls_list_logstores(
             ctx: Context,
             project: str = Field(..., description="sls project name,must exact match,should not contain chinese characters"),
             log_store: str = Field(None, description="log store name,fuzzy search"),
-            limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
+            limit: int = Field(50, description="limit,max is 100", ge=1, le=100),
             is_metric_store: bool = Field(
                 False,
                 description="is metric store,default is False,only use want to find metric store",
@@ -213,7 +218,7 @@ class SLSToolkit:
                 "messager": (
                     "Sorry not found logstore,please make sure your project and region or logstore name is correct, if you want to find metric store,please check is_metric_store parameter"
                     if log_store_count == 0
-                    else "success"
+                    else f"当前最多支持查询{limit}个日志库，未防止返回数据过长，如果需要查询更多日志库，您可以提供 logstore 的关键词来模糊查询"
                 ),
             }
 
@@ -224,6 +229,7 @@ class SLSToolkit:
             retry=retry_if_exception_type(Exception),
             reraise=True,
         )
+        @handle_tea_exception
         def sls_describe_logstore(
             ctx: Context,
             project: str = Field(
@@ -389,6 +395,7 @@ class SLSToolkit:
             retry=retry_if_exception_type(Exception),
             reraise=True,
         )
+        @handle_tea_exception
         def sls_translate_natural_language_to_log_query(
             ctx: Context,
             text: str = Field(
