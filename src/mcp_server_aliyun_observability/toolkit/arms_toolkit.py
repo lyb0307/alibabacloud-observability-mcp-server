@@ -3,18 +3,15 @@ from typing import Any
 
 from alibabacloud_arms20190808.client import Client as ArmsClient
 from alibabacloud_arms20190808.models import (
-    SearchTraceAppByPageRequest,
-    SearchTraceAppByPageResponse,
-    SearchTraceAppByPageResponseBodyPageBean,
-)
+    SearchTraceAppByPageRequest, SearchTraceAppByPageResponse,
+    SearchTraceAppByPageResponseBodyPageBean)
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
+from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
+                      wait_fixed)
 
 from mcp_server_aliyun_observability.utils import (
-    get_arms_user_trace_log_store,
-    text_to_sql,
-)
+    get_arms_user_trace_log_store, text_to_sql)
 
 logger = logging.getLogger(__name__)
 
@@ -30,15 +27,15 @@ class ArmsToolkit:
         @self.server.tool()
         def arms_search_apps(
             ctx: Context,
-            app_name_query: str = Field(..., description="app name query"),
-            region_id: str = Field(
+            appNameQuery: str = Field(..., description="app name query"),
+            regionId: str = Field(
                 ...,
                 description="region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
             ),
-            page_size: int = Field(
+            pageSize: int = Field(
                 20, description="page size,max is 100", ge=1, le=100
             ),
-            page_number: int = Field(1, description="page number,default is 1", ge=1),
+            pageNumber: int = Field(1, description="page number,default is 1", ge=1),
         ) -> list[dict[str, Any]]:
             """搜索ARMS应用。
 
@@ -82,12 +79,12 @@ class ArmsToolkit:
             """
             arms_client: ArmsClient = ctx.request_context.lifespan_context[
                 "arms_client"
-            ].with_region(region_id)
+            ].with_region(regionId)
             request: SearchTraceAppByPageRequest = SearchTraceAppByPageRequest(
-                trace_app_name=app_name_query,
-                region_id=region_id,
-                page_size=page_size,
-                page_number=page_number,
+                traceAppName=appNameQuery,
+                regionId=regionId,
+                pageSize=pageSize,
+                pageNumber=pageNumber,
             )
             response: SearchTraceAppByPageResponse = (
                 arms_client.search_trace_app_by_page(request)
@@ -104,9 +101,9 @@ class ArmsToolkit:
             if page_bean:
                 result["trace_apps"] = [
                     {
-                        "app_name": app.app_name,
+                        "appName": app.app_name,
                         "pid": app.pid,
-                        "user_id": app.user_id,
+                        "userId": app.user_id,
                         "type": app.type,
                     }
                     for app in page_bean.trace_apps
@@ -123,9 +120,9 @@ class ArmsToolkit:
         )
         def arms_generate_trace_query(
             ctx: Context,
-            user_id: int = Field(..., description="user aliyun account id"),
+            userId: int = Field(..., description="user aliyun account id"),
             pid: str = Field(..., description="pid,the pid of the app"),
-            region_id: str = Field(
+            regionId: str = Field(
                 ...,
                 description="region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
             ),
@@ -178,7 +175,7 @@ class ArmsToolkit:
                 包含查询信息的字典，包括sls_query、project和log_store
             """
 
-            data: dict[str, str] = get_arms_user_trace_log_store(user_id, region_id)
+            data: dict[str, str] = get_arms_user_trace_log_store(userId, regionId)
             instructions = [
                 "1. pid为" + pid,
                 "2. 响应时间字段为 duration,单位为纳秒，转换成毫秒",
@@ -195,10 +192,10 @@ class ArmsToolkit:
             请根据以上信息生成sls查询语句
             """
             sls_text_to_query = text_to_sql(
-                ctx, prompt, data["project"], data["log_store"], region_id
+                ctx, prompt, data["project"], data["logStore"], regionId
             )
             return {
-                "sls_query": sls_text_to_query,
+                "slsQuery": sls_text_to_query,
                 "project": data["project"],
-                "log_store": data["log_store"],
+                "logStore": data["logStore"],
             }

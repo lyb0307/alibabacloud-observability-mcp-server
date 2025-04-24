@@ -1,5 +1,6 @@
 import hashlib
 import logging
+from datetime import datetime
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar, cast
 
@@ -104,6 +105,16 @@ def get_arms_user_trace_log_store(user_id: int, region: str) -> dict[str, str]:
     return {"project": project, "log_store": log_store}
 
 
+def get_current_time() -> str:
+    """
+    获取当前时间
+    """
+    return {
+        "current_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "current_timestamp": int(datetime.now().timestamp()),
+    }
+
+
 def md5_string(origin: str) -> str:
     """
     计算字符串的MD5值，与Java实现对应
@@ -176,7 +187,7 @@ def text_to_sql(
         params: dict[str, Any] = {
             "project": project,
             "logstore": log_store,
-            "sys.query": text,
+            "sys.query": append_current_time(text),
         }
         request.params = params
         runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
@@ -193,3 +204,12 @@ def text_to_sql(
         logger.error(f"调用SLS AI工具失败: {str(e)}")
         raise
 
+        logger.error(f"调用SLS AI工具失败: {str(e)}")
+        raise
+
+
+def append_current_time(text: str) -> str:
+    """
+    添加当前时间
+    """
+    return f"当前时间: {get_current_time()},问题:{text}"
