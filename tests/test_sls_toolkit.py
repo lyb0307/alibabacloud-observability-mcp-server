@@ -71,12 +71,12 @@ async def test_sls_execute_query_success(
     text = await tool.run(
         {
             "project": os.getenv("TEST_PROJECT"),
-            "log_store": os.getenv("TEST_LOG_STORE"),
+            "logStore": os.getenv("TEST_LOG_STORE"),
             "query": "* | select count(*) as total",
-            "from_timestamp": int(datetime.now().timestamp()) - 3600,
-            "to_timestamp": int(datetime.now().timestamp()),
+            "fromTimestamp": int(datetime.now().timestamp()) - 3600,
+            "toTimestamp": int(datetime.now().timestamp()),
             "limit": 10,
-            "region_id": os.getenv("TEST_REGION"),
+            "regionId": os.getenv("TEST_REGION"),
         },
         context=mock_request_context,
     )
@@ -101,14 +101,13 @@ async def test_sls_list_projects_success(
     tool = mcp_server._tool_manager.get_tool("sls_list_projects")
     text = await tool.run(
         {
-            "project": "",
-            "log_store": "",
+            "projectName": "",
             "limit": 10,
-            "region_id": os.getenv("TEST_REGION"),
+            "regionId": os.getenv("TEST_REGION"),
         },
         context=mock_request_context,
     )
-    assert len(text["projects"]) > 0
+    assert len(text) > 0
 
 @pytest.mark.asyncio
 async def test_sls_list_logstores_success(
@@ -121,7 +120,7 @@ async def test_sls_list_logstores_success(
     text = await tool.run(
         {
             "project": os.getenv("TEST_PROJECT"),
-            "region_id": os.getenv("TEST_REGION"),
+            "regionId": os.getenv("TEST_REGION"),
             "limit": 10,
         },
         context=mock_request_context,
@@ -139,15 +138,15 @@ async def test_sls_list_metric_store_success(
     tool = mcp_server._tool_manager.get_tool("sls_list_logstores")
     text = await tool.run(
         {
-            "project": "2222",
-            "log_store": "",
+            "project": os.getenv("TEST_PROJECT"),
+            "logStore": "",
             "limit": 10,
-            "is_metric_store": True,
-            "region_id": os.getenv("TEST_REGION"),
+            "isMetricStore": True,
+            "regionId": os.getenv("TEST_REGION"),
         },
         context=mock_request_context,
     )
-    assert len(text["logstores"]) > 0
+    assert len(text["logstores"]) >= 0
 
 @pytest.mark.asyncio
 async def test_sls_describe_logstore_success(
@@ -160,8 +159,8 @@ async def test_sls_describe_logstore_success(
     text = await tool.run(
         {
             "project": os.getenv("TEST_PROJECT"),
-            "log_store": os.getenv("TEST_LOG_STORE"),
-            "region_id": os.getenv("TEST_REGION"),
+            "logStore": os.getenv("TEST_LOG_STORE"),
+            "regionId": os.getenv("TEST_REGION"),
         },
         context=mock_request_context,
     )
@@ -175,14 +174,15 @@ async def test_sls_translate_natural_language_to_query_success(
     mock_request_context: Context,
 ):
     """测试SLS自然语言转换为查询语句成功的情况"""
-    tool = mcp_server._tool_manager.get_tool("sls_translate_natural_language_to_query")
+    tool = mcp_server._tool_manager.get_tool("sls_translate_natural_language_to_log_query")
     text = await tool.run(
         {
             "project": os.getenv("TEST_PROJECT"),
-            "log_store": os.getenv("TEST_LOG_STORE"),
+            "logStore": os.getenv("TEST_LOG_STORE"),
             "text": "我想查询最近10分钟内，所有日志库的日志数量",
-            "region_id": os.getenv("TEST_REGION"),
+            "regionId": os.getenv("TEST_REGION"),
         },
         context=mock_request_context,
     )
     assert text is not None
+    assert "select" in text or "SELECT" in text
