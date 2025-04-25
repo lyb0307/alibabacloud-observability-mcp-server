@@ -242,9 +242,9 @@ class ArmsToolkit:
                 end_ms: 分析的结束时间，通过get_current_time工具获取毫秒级时间戳
                 profile_type: Profile类型，用于选择需要分析的Profile指标，支持CPU热点和内存热点，如'cpu'、'alloc_in_new_tlab_bytes'
                 language: ARMS服务的编程语言，如'java'、'go'等
-                ip: ARMS应用服务主机地址，非必要参数，用于选择所在的服务机器，填写时以英文逗号","分隔，如'192.168.0.1,192.168.0.2'，不填写默认查询服务所在的所有IP
-                thread: 服务线程名称，非必要参数，用于选择对应线程，填写时以英文逗号","分隔，如'C1 CompilerThre,C2 CompilerThre'，不填写默认查询服务所有线程
-                thread_group: 服务聚合线程组名称，非必要参数，用于选择对应线程组，填写时以英文逗号","分隔，如'http-nio-*-exec-*,http-nio-*-ClientPoller-*'，不填写默认查询服务所有聚合线程组
+                ip: ARMS应用服务主机地址，非必要参数，用于选择所在的服务机器，如有多个填写时以英文逗号","分隔，如'192.168.0.1,192.168.0.2'，不填写默认查询服务所在的所有IP
+                thread: 服务线程名称，非必要参数，用于选择对应线程，如有多个填写时以英文逗号","分隔，如'C1 CompilerThre,C2 CompilerThre'，不填写默认查询服务所有线程
+                thread_group: 服务聚合线程组名称，非必要参数，用于选择对应线程组，如有多个填写时以英文逗号","分隔，如'http-nio-*-exec-*,http-nio-*-ClientPoller-*'，不填写默认查询服务所有聚合线程组
                 region_id: 阿里云区域ID，如'cn-hangzhou'、'cn-shanghai'等
             """
             # Validate language parameter
