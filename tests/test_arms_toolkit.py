@@ -8,7 +8,7 @@ from mcp.shared.context import RequestContext
 
 from mcp_server_aliyun_observability.server import create_lifespan
 from mcp_server_aliyun_observability.toolkit.arms_toolkit import ArmsToolkit
-from mcp_server_aliyun_observability.utils import (CredentialWrapper, ArmsClientWrapper)
+from mcp_server_aliyun_observability.utils import (CredentialWrapper, ArmsClientWrapper, SLSClientWrapper)
 
 dotenv.load_dotenv()
 
@@ -42,6 +42,12 @@ def mock_request_context():
             session=None,
             lifespan_context={
                 "arms_client": ArmsClientWrapper(
+                    credential=CredentialWrapper(
+                        access_key_id=os.getenv("ALIYUN_ACCESS_KEY_ID"),
+                        access_key_secret=os.getenv("ALIYUN_ACCESS_KEY_SECRET"),
+                    ),
+                ),
+                "sls_client": SLSClientWrapper(
                     credential=CredentialWrapper(
                         access_key_id=os.getenv("ALIYUN_ACCESS_KEY_ID"),
                         access_key_secret=os.getenv("ALIYUN_ACCESS_KEY_SECRET"),
