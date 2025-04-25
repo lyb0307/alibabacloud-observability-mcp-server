@@ -105,6 +105,10 @@ def get_arms_user_trace_log_store(user_id: int, region: str) -> dict[str, str]:
     return {"project": project, "log_store": log_store}
 
 
+
+
+
+
 def get_current_time() -> str:
     """
     获取当前时间
