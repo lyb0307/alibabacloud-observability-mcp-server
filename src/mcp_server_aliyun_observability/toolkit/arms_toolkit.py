@@ -3,8 +3,13 @@ from typing import Any
 
 from alibabacloud_arms20190808.client import Client as ArmsClient
 from alibabacloud_arms20190808.models import (
+    GetTraceAppRequest, GetTraceAppResponse, GetTraceAppResponseBodyTraceApp,
     SearchTraceAppByPageRequest, SearchTraceAppByPageResponse,
     SearchTraceAppByPageResponseBodyPageBean)
+from alibabacloud_sls20201230.client import Client
+from alibabacloud_sls20201230.models import (CallAiToolsRequest,
+                                             CallAiToolsResponse)
+from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
 from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
@@ -81,10 +86,10 @@ class ArmsToolkit:
                 "arms_client"
             ].with_region(regionId)
             request: SearchTraceAppByPageRequest = SearchTraceAppByPageRequest(
-                traceAppName=appNameQuery,
-                regionId=regionId,
-                pageSize=pageSize,
-                pageNumber=pageNumber,
+                trace_app_name=appNameQuery,
+                region_id=regionId,
+                page_size=pageSize,
+                page_number=pageNumber,
             )
             response: SearchTraceAppByPageResponse = (
                 arms_client.search_trace_app_by_page(request)
@@ -101,9 +106,9 @@ class ArmsToolkit:
             if page_bean:
                 result["trace_apps"] = [
                     {
-                        "appName": app.app_name,
+                        "app_name": app.app_name,
                         "pid": app.pid,
-                        "userId": app.user_id,
+                        "user_id": app.user_id,
                         "type": app.type,
                     }
                     for app in page_bean.trace_apps
@@ -120,9 +125,9 @@ class ArmsToolkit:
         )
         def arms_generate_trace_query(
             ctx: Context,
-            userId: int = Field(..., description="user aliyun account id"),
+            user_id: int = Field(..., description="user aliyun account id"),
             pid: str = Field(..., description="pid,the pid of the app"),
-            regionId: str = Field(
+            region_id: str = Field(
                 ...,
                 description="region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
             ),
@@ -175,7 +180,7 @@ class ArmsToolkit:
                 包含查询信息的字典，包括sls_query、project和log_store
             """
 
-            data: dict[str, str] = get_arms_user_trace_log_store(userId, regionId)
+            data: dict[str, str] = get_arms_user_trace_log_store(user_id, region_id)
             instructions = [
                 "1. pid为" + pid,
                 "2. 响应时间字段为 duration,单位为纳秒，转换成毫秒",
@@ -192,10 +197,46 @@ class ArmsToolkit:
             请根据以上信息生成sls查询语句
             """
             sls_text_to_query = text_to_sql(
-                ctx, prompt, data["project"], data["logStore"], regionId
+                ctx, prompt, data["project"], data["log_store"], region_id
             )
             return {
-                "slsQuery": sls_text_to_query,
+                "sls_query": sls_text_to_query["data"],
+                "requestId": sls_text_to_query["requestId"],
                 "project": data["project"],
-                "logStore": data["logStore"],
+                "log_store": data["log_store"],
             }
+
+
+        @self.server.tool()
+        def arms_get_application_info(ctx: Context,
+                                      pid: str = Field(..., description="pid,the pid of the app"),
+                                      regionId: str = Field(...,
+                                        description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
+                                      ),
+                                      ) -> dict:
+            """
+            根据 PID获取具体某个应用的信息，
+            ## 功能概述
+            1. 获取ARMS应用信息，会返回应用的 PID，AppName,开发语言类型比如 java,python 等
+            
+            ## 使用场景
+            1. 当用户明确提出要查询某个应用的信息时，可以调用该工具
+            2. 有场景需要获取应用的开发语言类型，可以调用该工具
+            """
+            arms_client: ArmsClient = ctx.request_context.lifespan_context[
+                "arms_client"
+            ].with_region(regionId)
+            request: GetTraceAppRequest = GetTraceAppRequest(
+                pid=pid,
+                region_id=regionId,
+            )
+            response: GetTraceAppResponse = arms_client.get_trace_app(request)
+            if response.body:
+                trace_app: GetTraceAppResponseBodyTraceApp = response.body.trace_app
+                return {
+                    "pid": trace_app.pid,
+                    "app_name": trace_app.app_name,
+                    "language": trace_app.language,
+                }
+            else:
+                return "没有找到应用信息"

@@ -105,6 +105,10 @@ def get_arms_user_trace_log_store(user_id: int, region: str) -> dict[str, str]:
     return {"project": project, "log_store": log_store}
 
 
+
+
+
+
 def get_current_time() -> str:
     """
     获取当前时间
@@ -193,7 +197,7 @@ def handle_tea_exception(func: Callable[..., T]) -> Callable[..., T]:
 
 def text_to_sql(
     ctx: Context, text: str, project: str, log_store: str, region_id: str
-) -> str:
+) -> dict[str, Any]:
     try:
         sls_client: Client = ctx.request_context.lifespan_context[
             "sls_client"
@@ -216,14 +220,13 @@ def text_to_sql(
         data = tool_response.body
         if "------answer------\n" in data:
             data = data.split("------answer------\n")[1]
-        return data
+        return {
+            "data": data,
+            "requestId": tool_response.headers.get("x-log-requestid", ""),
+        }
     except Exception as e:
         logger.error(f"调用SLS AI工具失败: {str(e)}")
         raise
-
-        logger.error(f"调用SLS AI工具失败: {str(e)}")
-        raise
-
 
 def append_current_time(text: str) -> str:
     """
