@@ -67,14 +67,14 @@ async def test_sls_execute_query_success(
     mock_request_context: Context,
 ):
     """测试SLS查询执行成功的情况"""
-    tool = mcp_server._tool_manager.get_tool("sls_execute_query")
+    tool = mcp_server._tool_manager.get_tool("sls_execute_sql_query")
     text = await tool.run(
         {
             "project": os.getenv("TEST_PROJECT"),
             "logStore": os.getenv("TEST_LOG_STORE"),
             "query": "* | select count(*) as total",
-            "fromTimestamp": int(datetime.now().timestamp()) - 3600,
-            "toTimestamp": int(datetime.now().timestamp()),
+            "fromTimestampInSeconds": int(datetime.now().timestamp()) - 3600,
+            "toTimestampInSeconds": int(datetime.now().timestamp()),
             "limit": 10,
             "regionId": os.getenv("TEST_REGION"),
         },
@@ -185,4 +185,4 @@ async def test_sls_translate_text_to_sql_query_success(
         context=mock_request_context,
     )
     assert text is not None
-    assert "select" in text or "SELECT" in text
+    assert "select" in text["data"] or "SELECT" in text["data"]

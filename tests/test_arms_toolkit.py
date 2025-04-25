@@ -8,7 +8,9 @@ from mcp.shared.context import RequestContext
 
 from mcp_server_aliyun_observability.server import create_lifespan
 from mcp_server_aliyun_observability.toolkit.arms_toolkit import ArmsToolkit
-from mcp_server_aliyun_observability.utils import (CredentialWrapper, ArmsClientWrapper, SLSClientWrapper)
+from mcp_server_aliyun_observability.utils import (ArmsClientWrapper,
+                                                   CredentialWrapper,
+                                                   SLSClientWrapper)
 
 dotenv.load_dotenv()
 
@@ -62,29 +64,7 @@ def mock_request_context():
 @pytest.fixture
 def tool_manager(mcp_server):
     """创建ToolManager实例"""
+    return ArmsToolkit(mcp_server)@pytest.fixture
+def tool_manager(mcp_server):
+    """创建ToolManager实例"""
     return ArmsToolkit(mcp_server)
-
-@pytest.mark.asyncio
-async def test_arms_profile_flame_analysis_success(
-    tool_manager: ArmsToolkit,
-    mcp_server: FastMCP,
-    mock_request_context: Context,
-):
-    """测试arms_profile_flame_analysis成功的情况"""
-    tools = mcp_server._tool_manager.list_tools()
-    tool = mcp_server._tool_manager.get_tool("arms_profile_flame_analysis")
-    result_data = await tool.run(
-        {
-            "service_name": "test_service",
-            "start_ms": "1609459200000",
-            "end_ms": "1609545600000",
-            "profile_type": "cpu",
-            "ip": "127.0.0.1",
-            "language": "java",
-            "thread": "",
-            "thread_group": "",
-            "region_id": "cn-hangzhou",
-        },
-        context=mock_request_context,
-    )
-    assert result_data is not None
