@@ -201,7 +201,8 @@ class ArmsToolkit:
                 ctx, prompt, data["project"], data["log_store"], region_id
             )
             return {
-                "sls_query": sls_text_to_query,
+                "sls_query": sls_text_to_query["data"],
+                "requestId": sls_text_to_query["requestId"],
                 "project": data["project"],
                 "log_store": data["log_store"],
             }

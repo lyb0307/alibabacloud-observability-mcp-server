@@ -168,13 +168,13 @@ async def test_sls_describe_logstore_success(
 
 
 @pytest.mark.asyncio
-async def test_sls_translate_natural_language_to_query_success(
+async def test_sls_translate_text_to_sql_query_success(
     tool_manager: SLSToolkit,
     mcp_server: FastMCP,
     mock_request_context: Context,
 ):
     """测试SLS自然语言转换为查询语句成功的情况"""
-    tool = mcp_server._tool_manager.get_tool("sls_translate_natural_language_to_log_query")
+    tool = mcp_server._tool_manager.get_tool("sls_translate_text_to_sql_query")
     text = await tool.run(
         {
             "project": os.getenv("TEST_PROJECT"),

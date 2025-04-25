@@ -2,11 +2,13 @@ import logging
 from typing import Any, Dict, List
 
 from alibabacloud_sls20201230.client import Client
-from alibabacloud_sls20201230.models import CallAiToolsRequest, CallAiToolsResponse
+from alibabacloud_sls20201230.models import (CallAiToolsRequest,
+                                             CallAiToolsResponse)
 from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
+from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
+                      wait_fixed)
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -35,7 +37,7 @@ class CMSToolkit:
             retry=retry_if_exception_type(Exception),
             reraise=True,
         )
-        def cms_translate_natural_language_to_promql(
+        def cms_translate_text_to_promql(
             ctx: Context,
             text: str = Field(
                 ...,
