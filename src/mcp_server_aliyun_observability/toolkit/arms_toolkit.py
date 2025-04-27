@@ -339,11 +339,11 @@ class ArmsToolkit:
 
             Args:
                 ctx: MCP上下文，用于访问SLS客户端
-                pid: ARMS应用监控服务ID
-                baseStartMs: 基准分析的开始时间
-                baseEndMs: 基准分析的结束时间
-                compareStartMs: 对比分析的开始时间
-                compareEndMs: 对比分析的结束时间
+                pid: ARMS应用监控服务PID
+                baseStartMs: 火焰图分析的基准开始时间，通过get_current_time工具获取毫秒级时间戳
+                baseEndMs: 火焰图分析的基准结束时间，通过get_current_time工具获取毫秒级时间戳
+                compareStartMs: 火焰图分析的对比开始时间，通过get_current_time工具获取毫秒级时间戳
+                compareEndMs: 火焰图分析的对比结束时间，通过get_current_time工具获取毫秒级时间戳
                 profileType: Profile类型，如'cpu'、'memory'
                 ip: ARMS应用服务主机地址，非必要参数，用于选择所在的服务机器，如有多个填写时以英文逗号","分隔，如'192.168.0.1,192.168.0.2'，不填写默认查询服务所在的所有IP
                 thread: 服务线程名称，非必要参数，用于选择对应线程，如有多个填写时以英文逗号","分隔，如'C1 CompilerThre,C2 CompilerThre'，不填写默认查询服务所有线程
