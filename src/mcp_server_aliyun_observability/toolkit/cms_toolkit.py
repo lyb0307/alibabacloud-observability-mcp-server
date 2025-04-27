@@ -16,7 +16,8 @@ from alibabacloud_sls20201230.models import (
 from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
+from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
+                      wait_fixed)
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -321,15 +322,15 @@ class CMSToolkit:
             retry=retry_if_exception_type(Exception),
             reraise=True,
         )
-        def cms_translate_natural_language_to_promql(
+        def cms_translate_text_to_promql(
             ctx: Context,
             text: str = Field(
                 ...,
                 description="the natural language text to generate promql",
             ),
             project: str = Field(..., description="sls project name"),
-            metric_store: str = Field(..., description="sls metric store name"),
-            region_id: str = Field(
+            metricStore: str = Field(..., description="sls metric store name"),
+            regionId: str = Field(
                 default=...,
                 description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
             ),
@@ -367,8 +368,8 @@ class CMSToolkit:
                 ctx: MCP上下文，用于访问SLS客户端
                 text: 用于生成查询的自然语言文本
                 project: SLS项目名称
-                metric_store: SLS时序库名称
-                region_id: 阿里云区域ID
+                metricStore: SLS时序库名称
+                regionId: 阿里云区域ID
 
             Returns:
                 生成的PromQL查询语句
@@ -379,10 +380,10 @@ class CMSToolkit:
                 ].with_region("cn-shanghai")
                 request: CallAiToolsRequest = CallAiToolsRequest()
                 request.tool_name = "text_to_promql"
-                request.region_id = region_id
+                request.region_id = regionId
                 params: dict[str, Any] = {
                     "project": project,
-                    "metricstore": metric_store,
+                    "metricstore": metricStore,
                     "sys.query": text,
                 }
                 request.params = params

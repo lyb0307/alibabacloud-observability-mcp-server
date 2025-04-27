@@ -14,11 +14,14 @@ from alibabacloud_sls20201230.models import (CallAiToolsRequest,
                                              ListProjectResponse)
 from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.fastmcp.prompts import base
 from pydantic import Field
 from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
                       wait_fixed)
 
-from mcp_server_aliyun_observability.utils import (handle_tea_exception,
+from mcp_server_aliyun_observability.utils import (append_current_time,
+                                                   get_current_time,
+                                                   handle_tea_exception,
                                                    parse_json_keys,
                                                    text_to_sql)
 
@@ -38,20 +41,42 @@ class SLSToolkit:
         """
         self.server = server
         self._register_sls_tools()
-
+        self._register_prompts()
+        
+        
+    def _register_prompts(self):
+        """register sls related prompts functions"""
+        
+        @self.server.prompt(name="sls 日志查询 prompt",description="当用户需要查询 sls 日志时，可以调用该 prompt来获取过程")
+        def query_sls_logs(question: str) -> str:
+            """当用户需要查询 sls 日志时，可以调用该 prompt来获取过程"""
+            return [
+                base.UserMessage("基于以下问题查询下对应的 sls日志:"),
+                base.UserMessage(
+                    f"问题: {question}"
+                ),
+                base.UserMessage("过程如下:"),
+                base.UserMessage(content="1.首先尝试从上下文提取有效的 project 和 logstore 信息,如果上下文没有提供，请使用 sls_list_projects 和 sls_list_logstores 工具获取"),
+                base.UserMessage(content="2.如果问题里面已经明确包含了查询语句，则直接使用，如果问题里面没有明确包含查询语句，则需要使用 sls_translate_natural_language_to_log_query 工具生成查询语句"),
+                base.UserMessage(
+                    "3. 最后使用 sls_execute_query 工具执行查询语句，获取查询结果"
+                ),
+                base.UserMessage("3. 返回查询到的日志"),
+            ]
+            
     def _register_sls_tools(self):
         """register sls related tools functions"""
 
         @self.server.tool()
         def sls_list_projects(
             ctx: Context,
-            project_name_query: str = Field(
+            projectName: str = Field(
                 None, description="project name,fuzzy search"
             ),
             limit: int = Field(
-                default=10, description="limit,max is 100", ge=1, le=100
+                default=50, description="limit,max is 100", ge=1, le=100
             ),
-            region_id: str = Field(default=..., description="aliyun region id"),
+            regionId: str = Field(default=..., description="aliyun region id"),
         ) -> list[dict[str, Any]]:
             """列出阿里云日志服务中的所有项目。
 
@@ -79,29 +104,33 @@ class SLSToolkit:
 
             Args:
                 ctx: MCP上下文，用于访问SLS客户端
-                project_name_query: 项目名称查询字符串，支持模糊搜索
+                projectName: 项目名称查询字符串，支持模糊搜索
                 limit: 返回结果的最大数量，范围1-100，默认10
-                region_id: 阿里云区域ID,region id format like "xx-xxx",like "cn-hangzhou"
+                regionId: 阿里云区域ID,region id format like "xx-xxx",like "cn-hangzhou"
 
             Returns:
                 包含项目信息的字典列表，每个字典包含project_name、description和region_id
             """
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
-            ].with_region(region_id)
+            ].with_region(regionId)
             request: ListProjectRequest = ListProjectRequest(
-                project_name=project_name_query,
+                project_name=projectName,
                 size=limit,
             )
             response: ListProjectResponse = sls_client.list_project(request)
-            return [
-                {
-                    "project_name": project.project_name,
-                    "description": project.description,
-                    "region_id": project.region,
+
+            return{
+                "projects": [
+                    {
+                        "project_name": project.project_name,
+                        "description": project.description,
+                        "region_id": project.region,
                 }
                 for project in response.body.projects
-            ]
+            ],
+                "message": f"当前最多支持查询{limit}个项目，未防止返回数据过长，如果需要查询更多项目，您可以提供 project 的关键词来模糊查询"
+            }
 
         @self.server.tool()
         @retry(
@@ -110,20 +139,21 @@ class SLSToolkit:
             retry=retry_if_exception_type(Exception),
             reraise=True,
         )
+        @handle_tea_exception
         def sls_list_logstores(
             ctx: Context,
             project: str = Field(..., description="sls project name,must exact match,should not contain chinese characters"),
-            log_store: str = Field(None, description="log store name,fuzzy search"),
+            logStore: str = Field(None, description="log store name,fuzzy search"),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
-            is_metric_store: bool = Field(
+            isMetricStore: bool = Field(
                 False,
                 description="is metric store,default is False,only use want to find metric store",
             ),
-            log_store_type: str = Field(
+            logStoreType: str = Field(
                 None,
                 description="log store type,default is logs,should be logs,metrics",
             ),
-            region_id: str = Field(
+            regionId: str = Field(
                 default=...,
                 description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
             ),
@@ -162,8 +192,8 @@ class SLSToolkit:
             Returns:
                 日志库名称的字符串列表
             """
-            if is_metric_store:
-                log_store_type = "Metrics"
+            if isMetricStore:
+                logStoreType = "Metrics"
                 
             if project == "":
                 return {
@@ -173,11 +203,11 @@ class SLSToolkit:
                 }
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
-            ].with_region(region_id)
+            ].with_region(regionId)
             request: ListLogStoresRequest = ListLogStoresRequest(
-                logstore_name=log_store,
+                logstore_name=logStore,
                 size=limit,
-                telemetry_type=log_store_type,
+                telemetry_type=logStoreType,
             )
             response: ListLogStoresResponse = sls_client.list_log_stores(
                 project, request
@@ -187,10 +217,10 @@ class SLSToolkit:
             return {
                 "total": log_store_count,
                 "logstores": log_store_list,
-                "messager": (
+                "message": (
                     "Sorry not found logstore,please make sure your project and region or logstore name is correct, if you want to find metric store,please check is_metric_store parameter"
                     if log_store_count == 0
-                    else "success"
+                    else f"当前最多支持查询{limit}个日志库，未防止返回数据过长，如果需要查询更多日志库，您可以提供 logstore 的关键词来模糊查询"
                 ),
             }
 
@@ -201,15 +231,16 @@ class SLSToolkit:
             retry=retry_if_exception_type(Exception),
             reraise=True,
         )
+        @handle_tea_exception
         def sls_describe_logstore(
             ctx: Context,
             project: str = Field(
                 ..., description="sls project name,must exact match,not fuzzy search"
             ),
-            log_store: str = Field(
+            logStore: str = Field(
                 ..., description="sls log store name,must exact match,not fuzzy search"
             ),
-            region_id: str = Field(
+            regionId: str = Field(
                 default=...,
                 description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
             ),
@@ -252,8 +283,8 @@ class SLSToolkit:
             """
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
-            ].with_region(region_id)
-            response: GetIndexResponse = sls_client.get_index(project, log_store)
+            ].with_region(regionId)
+            response: GetIndexResponse = sls_client.get_index(project, logStore)
             response_body: GetIndexResponseBody = response.body
             keys: dict[str, IndexKey] = response_body.keys
             index_dict: dict[str, dict[str, str]] = {}
@@ -274,17 +305,17 @@ class SLSToolkit:
             reraise=True,
         )
         @handle_tea_exception
-        def sls_execute_query(
+        def sls_execute_sql_query(
             ctx: Context,
             project: str = Field(..., description="sls project name"),
-            log_store: str = Field(..., description="sls log store name"),
+            logStore: str = Field(..., description="sls log store name"),
             query: str = Field(..., description="query"),
-            from_timestamp: int = Field(
-                ..., description="from timestamp,unit is second"
+            fromTimestampInSeconds: int = Field(
+                ..., description="from timestamp,unit is second,should be unix timestamp, only number,no other characters"
             ),
-            to_timestamp: int = Field(..., description="to timestamp,unit is second"),
+            toTimestampInSeconds: int = Field(..., description="to timestamp,unit is second,should be unix timestamp, only number,no other characters"),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
-            region_id: str = Field(
+            regionId: str = Field(
                 default=...,
                 description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
             ),
@@ -293,7 +324,7 @@ class SLSToolkit:
 
             ## 功能概述
 
-            该工具用于在指定的SLS项目和日志库上执行查询语句，并返回查询结果。查询将在指定的时间范围内执行。
+            该工具用于在指定的SLS项目和日志库上执行查询语句，并返回查询结果。查询将在指定的时间范围内执行。 如果上下文没有提到具体的 SQL 语句，必须优先使用 sls_translate_text_to_sql_query 工具生成查询语句,无论问题有多简单
 
             ## 使用场景
 
@@ -303,16 +334,15 @@ class SLSToolkit:
             - 当需要统计日志数据的聚合信息时
 
 
-
             ## 查询语法
 
             查询必须使用SLS有效的查询语法，而非自然语言。如果不了解日志库的结构，可以先使用sls_describe_logstore工具获取索引信息。
 
             ## 时间范围
 
-            查询必须指定时间范围：
-            - from_timestamp: 开始时间戳（秒）
-            - to_timestamp: 结束时间戳（秒）
+            查询必须指定时间范围：  if the query is generated by sls_translate_text_to_sql_query tool, should use the fromTimestampInSeconds and toTimestampInSeconds in the sls_translate_text_to_sql_query response
+            - fromTimestampInSeconds: 开始时间戳（秒）
+            - toTimestampInSeconds: 结束时间戳（秒）
 
             ## 查询示例
 
@@ -320,35 +350,35 @@ class SLSToolkit:
             - "查找最近一小时内的错误日志"
 
             ## 错误处理
-            - Column xxx can not be resolved 如果是 sls_translate_natural_language_to_query 工具生成的查询语句 可能存在查询列未开启统计，可以提示用户增加相对应的信息，或者调用 sls_describe_logstore 工具获取索引信息之后，要用户选择正确的字段或者提示用户对列开启统计。当确定列开启统计之后，可以再次调用sls_translate_natural_language_to_query 工具生成查询语句
+            - Column xxx can not be resolved 如果是 sls_translate_text_to_sql_query 工具生成的查询语句 可能存在查询列未开启统计，可以提示用户增加相对应的信息，或者调用 sls_describe_logstore 工具获取索引信息之后，要用户选择正确的字段或者提示用户对列开启统计。当确定列开启统计之后，可以再次调用sls_translate_text_to_sql_query 工具生成查询语句
 
             Args:
                 ctx: MCP上下文，用于访问SLS客户端
                 project: SLS项目名称
-                log_store: SLS日志库名称
+                logStore: SLS日志库名称
                 query: SLS查询语句
-                from_timestamp: 查询开始时间戳（秒）
-                to_timestamp: 查询结束时间戳（秒）
+                fromTimestamp: 查询开始时间戳（秒）
+                toTimestamp: 查询结束时间戳（秒）
                 limit: 返回结果的最大数量，范围1-100，默认10
-                region_id: 阿里云区域ID
+                regionId: 阿里云区域ID
 
             Returns:
                 查询结果列表，每个元素为一条日志记录
             """
             sls_client: Client = ctx.request_context.lifespan_context[
                 "sls_client"
-            ].with_region(region_id)
+            ].with_region(regionId)
             request: GetLogsRequest = GetLogsRequest(
                 query=query,
-                from_=from_timestamp,
-                to=to_timestamp,
+                from_=fromTimestampInSeconds,
+                to=toTimestampInSeconds,
                 line=limit,
             )
             runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
             runtime.read_timeout = 60000
             runtime.connect_timeout = 60000
             response: GetLogsResponse = sls_client.get_logs_with_options(
-                project, log_store, request, headers={}, runtime=runtime
+                project, logStore, request, headers={}, runtime=runtime
             )
             response_body: List[Dict[str, Any]] = response.body
             result = {
@@ -366,24 +396,25 @@ class SLSToolkit:
             retry=retry_if_exception_type(Exception),
             reraise=True,
         )
-        def sls_translate_natural_language_to_query(
+        @handle_tea_exception
+        def sls_translate_text_to_sql_query(
             ctx: Context,
             text: str = Field(
                 ...,
                 description="the natural language text to generate sls log store query",
             ),
             project: str = Field(..., description="sls project name"),
-            log_store: str = Field(..., description="sls log store name"),
-            region_id: str = Field(
+            logStore: str = Field(..., description="sls log store name"),
+            regionId: str = Field(
                 default=...,
                 description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
             ),
-        ) -> str:
-            """将自然语言转换为SLS查询语句。
+        ) -> dict[str, Any]:
+            """将自然语言转换为SLS查询语句。当用户有明确的 logstore 查询需求，必须优先使用该工具来生成查询语句
 
             ## 功能概述
 
-            该工具可以将自然语言描述转换为有效的SLS查询语句，便于用户使用自然语言表达查询需求。
+            该工具可以将自然语言描述转换为有效的SLS查询语句，便于用户使用自然语言表达查询需求。用户有任何 SLS 日志查询需求时，都需要优先使用该工具。
 
             ## 使用场景
 
@@ -420,16 +451,17 @@ class SLSToolkit:
             Returns:
                 生成的SLS查询语句
             """
-            return text_to_sql(ctx, text, project, log_store, region_id)
+            
+            return text_to_sql(ctx, text, project, logStore, regionId)
 
         @self.server.tool()
         def sls_diagnose_query(
             ctx: Context,
             query: str = Field(..., description="sls query"),
-            error_message: str = Field(..., description="error message"),
+            errorMessage: str = Field(..., description="error message"),
             project: str = Field(..., description="sls project name"),
-            log_store: str = Field(..., description="sls log store name"),
-            region_id: str = Field(
+            logStore: str = Field(..., description="sls log store name"),
+            regionId: str = Field(
                 default=...,
                 description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
             ),
@@ -464,11 +496,11 @@ class SLSToolkit:
                 ].with_region("cn-shanghai")
                 request: CallAiToolsRequest = CallAiToolsRequest()
                 request.tool_name = "diagnosis_sql"
-                request.region_id = region_id
+                request.region_id = regionId
                 params: dict[str, Any] = {
                     "project": project,
-                    "logstore": log_store,
-                    "sys.query": f"帮我诊断下 {query} 的日志查询语句,错误信息为 {error_message}",
+                    "logstore": logStore,
+                    "sys.query": append_current_time(f"帮我诊断下 {query} 的日志查询语句,错误信息为 {errorMessage}"),
                 }
                 request.params = params
                 runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
