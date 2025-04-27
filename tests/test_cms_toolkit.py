@@ -70,7 +70,6 @@ async def test_cms_summarize_alert_events_success(
         {
             "from_timestamp": int(datetime.now().timestamp()) - 3600,
             "to_timestamp": int(datetime.now().timestamp()),
-            "limit": 10,
             "region_id": os.getenv("TEST_REGION"),
         },
         context=mock_request_context,

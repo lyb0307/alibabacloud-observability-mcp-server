@@ -16,8 +16,7 @@ from alibabacloud_sls20201230.models import (
 from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
-from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
-                      wait_fixed)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -42,13 +41,13 @@ class CMSToolkit:
         @self.server.tool()
         def cms_summarize_alert_events(
             ctx: Context,
-            from_timestamp: int = Field(
+            fromTimestampInSeconds: int = Field(
                 ..., description="from timestamp,unit is second, like 1745384910"
             ),
-            to_timestamp: int = Field(
+            toTimestampInSeconds: int = Field(
                 ..., description="to timestamp,unit is second, like 1745388510"
             ),
-            region_id: str = Field(
+            regionId: str = Field(
                 default=...,
                 description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
             ),
@@ -91,9 +90,9 @@ class CMSToolkit:
 
             Args:
                 ctx: MCP上下文，用于访问SLS客户端
-                from_timestamp: 查询开始时间戳（秒）
-                to_timestamp: 查询结束时间戳（秒）
-                region_id: 阿里云区域ID
+                fromTimestampInSeconds: 查询开始时间戳（秒）
+                toTimestampInSeconds: 查询结束时间戳（秒）
+                regionId: 阿里云区域ID
 
             Returns:
                 日志库名称的告警事件信息字典
@@ -102,7 +101,7 @@ class CMSToolkit:
                 # get project and logstore
                 cms_client: Client = ctx.request_context.lifespan_context[
                     "cms_client"
-                ].with_region(region_id)
+                ].with_region(regionId)
                 request: ListProjectRequest = ListProjectRequest(
                     project_name="cms-alert-center",
                     size=100,
@@ -112,10 +111,10 @@ class CMSToolkit:
                     {
                         "project_name": project.project_name,
                         "description": project.description,
-                        "region_id": project.region,
+                        "regionId": project.region,
                     }
                     for project in response.body.projects
-                    if project.project_name.endswith(region_id)
+                    if project.project_name.endswith(regionId)
                 ]
                 project = projects[0]["project_name"]
 
@@ -129,7 +128,7 @@ class CMSToolkit:
                 log_store_list = [
                     log_store
                     for log_store in response.body.logstores
-                    if log_store.endswith(region_id)
+                    if log_store.endswith(regionId)
                 ]
 
                 log_store = log_store_list[0]
@@ -141,8 +140,8 @@ class CMSToolkit:
                 # 获取告警总揽信息
                 request: GetLogsRequest = GetLogsRequest(
                     query="* | SELECT  COUNT(CASE WHEN type = 'ALERT' THEN 1 END) AS alert_events ,COUNT(DISTINCT CASE WHEN type = 'ALERT' AND status != 'RECOVERED' THEN source END) AS alert_rules FROM log",
-                    from_=from_timestamp,
-                    to=to_timestamp,
+                    from_=fromTimestampInSeconds,
+                    to=toTimestampInSeconds,
                 )
                 response: GetLogsResponse = cms_client.get_logs_with_options(
                     project, log_store, request, headers={}, runtime=runtime
@@ -153,8 +152,8 @@ class CMSToolkit:
                 # 获取告警按照严重等级信息
                 request: GetLogsRequest = GetLogsRequest(
                     query="* | SELECT severity, COUNT(*) AS alert_count FROM log GROUP BY severity order by alert_count desc",
-                    from_=from_timestamp,
-                    to=to_timestamp,
+                    from_=fromTimestampInSeconds,
+                    to=toTimestampInSeconds,
                 )
                 response: GetLogsResponse = cms_client.get_logs_with_options(
                     project, log_store, request, headers={}, runtime=runtime
@@ -165,8 +164,8 @@ class CMSToolkit:
                 # 获取告警事件按照告警规则维度的信息
                 request: GetLogsRequest = GetLogsRequest(
                     query="type:alert | set session mode=scan; SELECT source as rule_id, subject, json_extract_scalar(data, '$.rule.query') as rule_query, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (rule_id, subject,rule_query) ORDER BY percentage DESC limit 10",
-                    from_=from_timestamp,
-                    to=to_timestamp,
+                    from_=fromTimestampInSeconds,
+                    to=toTimestampInSeconds,
                 )
                 response: GetLogsResponse = cms_client.get_logs_with_options(
                     project, log_store, request, headers={}, runtime=runtime
@@ -177,8 +176,8 @@ class CMSToolkit:
                 # 获取告警事件按照资源维度的信息
                 request: GetLogsRequest = GetLogsRequest(
                     query="type:alert | set session mode=scan;  SELECT json_extract(resource, '$.entity') as entity, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (entity) ORDER BY count DESC limit 100",
-                    from_=from_timestamp,
-                    to=to_timestamp,
+                    from_=fromTimestampInSeconds,
+                    to=toTimestampInSeconds,
                 )
                 response: GetLogsResponse = cms_client.get_logs_with_options(
                     project, log_store, request, headers={}, runtime=runtime
@@ -200,13 +199,13 @@ class CMSToolkit:
         @self.server.tool()
         def cms_governance_alert_storm(
             ctx: Context,
-            from_timestamp: int = Field(
+            fromTimestampInSeconds: int = Field(
                 ..., description="from timestamp,unit is second, like 1745384910"
             ),
-            to_timestamp: int = Field(
+            toTimestampInSeconds: int = Field(
                 ..., description="to timestamp,unit is second, like 1745388510"
             ),
-            region_id: str = Field(
+            regionId: str = Field(
                 default=...,
                 description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
             ),
@@ -227,9 +226,9 @@ class CMSToolkit:
 
             Args:
                 ctx: MCP上下文，用于访问SLS客户端
-                from_timestamp: 查询开始时间戳（秒）
-                to_timestamp: 查询结束时间戳（秒）
-                region_id: 阿里云区域ID
+                fromTimestampInSeconds: 查询开始时间戳（秒）
+                toTimestampInSeconds: 查询结束时间戳（秒）
+                regionId: 阿里云区域ID
 
             Returns:
                 告警治理建议信息字典
@@ -238,7 +237,7 @@ class CMSToolkit:
                 # get project and logstore
                 cms_client: Client = ctx.request_context.lifespan_context[
                     "cms_client"
-                ].with_region(region_id)
+                ].with_region(regionId)
                 request: ListProjectRequest = ListProjectRequest(
                     project_name="cms-alert-center",
                     size=100,
@@ -248,10 +247,10 @@ class CMSToolkit:
                     {
                         "project_name": project.project_name,
                         "description": project.description,
-                        "region_id": project.region,
+                        "regionId": project.region,
                     }
                     for project in response.body.projects
-                    if project.project_name.endswith(region_id)
+                    if project.project_name.endswith(regionId)
                 ]
                 project = projects[0]["project_name"]
 
@@ -265,7 +264,7 @@ class CMSToolkit:
                 log_store_list = [
                     log_store
                     for log_store in response.body.logstores
-                    if log_store.endswith(region_id)
+                    if log_store.endswith(regionId)
                 ]
 
                 log_store = log_store_list[0]
@@ -277,8 +276,8 @@ class CMSToolkit:
                 # 获取告警事件按照告警规则维度的信息
                 request: GetLogsRequest = GetLogsRequest(
                     query="type:alert | set session mode=scan; SELECT source as rule_id, subject, json_extract_scalar(data, '$.rule.query') as rule_query, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (rule_id, subject,rule_query) ORDER BY percentage DESC limit 10",
-                    from_=from_timestamp,
-                    to=to_timestamp,
+                    from_=fromTimestampInSeconds,
+                    to=toTimestampInSeconds,
                 )
                 response: GetLogsResponse = cms_client.get_logs_with_options(
                     project, log_store, request, headers={}, runtime=runtime
@@ -291,8 +290,8 @@ class CMSToolkit:
                 spl = cms_spls.get_spl("threshold-rule-analysis")
                 request: GetLogsRequest = GetLogsRequest(
                     query=spl,
-                    from_=from_timestamp,
-                    to=to_timestamp,
+                    from_=fromTimestampInSeconds,
+                    to=toTimestampInSeconds,
                 )
                 response: GetLogsResponse = cms_client.get_logs_with_options(
                     project, log_store, request, headers={}, runtime=runtime
@@ -380,7 +379,7 @@ class CMSToolkit:
                 ].with_region("cn-shanghai")
                 request: CallAiToolsRequest = CallAiToolsRequest()
                 request.tool_name = "text_to_promql"
-                request.region_id = regionId
+                request.regionId = regionId
                 params: dict[str, Any] = {
                     "project": project,
                     "metricstore": metricStore,
@@ -406,11 +405,7 @@ class CMSToolkit:
 
 class CMSSPLContainer:
     def __init__(self):
-        self.spls = {
-            "greeting": "Hello!",
-            "farewell": "Goodbye!",
-            "warning": "Be cautious.",
-        }
+        self.spls = {}
         self.spls[
             "threshold-rule-analysis"
         ] = r"""
