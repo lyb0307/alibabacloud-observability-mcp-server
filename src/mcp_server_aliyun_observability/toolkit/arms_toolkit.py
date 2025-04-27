@@ -248,6 +248,7 @@ class ArmsToolkit:
             """
             try:
                 valid_types = ['cpu', 'memory']
+                profileType = profileType.lower()
                 if profileType not in valid_types:
                     raise ValueError(f"无效的profileType: {profileType}, 仅支持: {', '.join(valid_types)}")
 
@@ -352,6 +353,7 @@ class ArmsToolkit:
             """
             try:
                 valid_types = ['cpu', 'memory']
+                profileType = profileType.lower()
                 if profileType not in valid_types:
                     raise ValueError(f"无效的profileType: {profileType}, 仅支持: {', '.join(valid_types)}")
 
