@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional, TypeVar, cast
+from functools import wraps
 
 from alibabacloud_sls20201230.client import Client
 from alibabacloud_sls20201230.models import CallAiToolsRequest, CallAiToolsResponse
@@ -41,6 +42,7 @@ class CMSToolkit:
         """register cms and prometheus related tools functions"""
 
         @self.server.tool()
+        @check_cms_status
         @handle_tea_exception
         def cms_summarize_alert_events(
             ctx: Context,
@@ -104,49 +106,15 @@ class CMSToolkit:
             cms_client: Client = ctx.request_context.lifespan_context[
                 "cms_client"
             ].with_region(regionId)
-            request: ListProjectRequest = ListProjectRequest(
-                project_name="cms-alert-center",
-                size=100,
-            )
-            response: ListProjectResponse = cms_client.list_project(request)
-            projects = [
-                {
-                    "project_name": project.project_name,
-                    "description": project.description,
-                    "regionId": project.region,
-                }
-                for project in response.body.projects
-                if project.project_name.endswith(regionId)
-            ]
-            if len(projects) == 0:
+
+            res = get_cms_alert_event_log_store(ctx, regionId)
+            if res is None:
                 return {
-                    "errorMessage": "no project found",
-                    "description": "未找到合适的存储",
-                    "solution": "请您检查 project 是否存在，是否开通 CMS2.0 告警功能",
+                    "data": "获取告警总揽信息失败",
+                    "requestId": "",
                 }
-
-            project = projects[0]["project_name"]
-
-            request: ListLogStoresRequest = ListLogStoresRequest(
-                logstore_name="alert-rule-event-default",
-                size=100,
-            )
-            response: ListLogStoresResponse = cms_client.list_log_stores(
-                project, request
-            )
-            log_store_list = [
-                log_store
-                for log_store in response.body.logstores
-                if log_store.endswith(regionId)
-            ]
-            if len(log_store_list) == 0:
-                return {
-                    "errorMessage": "no log_store found",
-                    "description": "未找到合适的存储",
-                    "solution": "请您检查 log_store 是否存在，是否开通 CMS2.0 告警功能",
-                }
-
-            log_store = log_store_list[0]
+            project = res["project"]
+            log_store = res["log_store"]
 
             runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
             runtime.read_timeout = 60000
@@ -161,6 +129,7 @@ class CMSToolkit:
             response: GetLogsResponse = cms_client.get_logs_with_options(
                 project, log_store, request, headers={}, runtime=runtime
             )
+
             alert_event_total: List[Dict[str, Any]] = response.body
             print(alert_event_total)
 
@@ -209,6 +178,7 @@ class CMSToolkit:
             return result
 
         @self.server.tool()
+        @check_cms_status
         @handle_tea_exception
         def cms_governance_alert_storm(
             ctx: Context,
@@ -250,48 +220,14 @@ class CMSToolkit:
             cms_client: Client = ctx.request_context.lifespan_context[
                 "cms_client"
             ].with_region(regionId)
-            request: ListProjectRequest = ListProjectRequest(
-                project_name="cms-alert-center",
-                size=100,
-            )
-            response: ListProjectResponse = cms_client.list_project(request)
-            projects = [
-                {
-                    "project_name": project.project_name,
-                    "description": project.description,
-                    "regionId": project.region,
-                }
-                for project in response.body.projects
-                if project.project_name.endswith(regionId)
-            ]
-            if len(projects) == 0:
+            res = get_cms_alert_event_log_store(ctx, regionId)
+            if res is None:
                 return {
-                    "errorMessage": "no project found",
-                    "description": "未找到合适的存储",
-                    "solution": "请您检查 project 是否存在，是否开通 CMS2.0 告警功能",
+                    "data": "获取告警总揽信息失败",
+                    "requestId": "",
                 }
-            project = projects[0]["project_name"]
-
-            request: ListLogStoresRequest = ListLogStoresRequest(
-                logstore_name="alert-rule-event-default",
-                size=100,
-            )
-            response: ListLogStoresResponse = cms_client.list_log_stores(
-                project, request
-            )
-            log_store_list = [
-                log_store
-                for log_store in response.body.logstores
-                if log_store.endswith(regionId)
-            ]
-            if len(projects) == 0:
-                return {
-                    "errorMessage": "no log_store found",
-                    "description": "未找到合适的存储",
-                    "solution": "请您检查 log_store 是否存在，是否开通 CMS2.0 告警功能",
-                }
-
-            log_store = log_store_list[0]
+            project = res["project"]
+            log_store = res["log_store"]
 
             runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
             runtime.read_timeout = 60000
@@ -513,3 +449,71 @@ situation -> 表示某个告警的现状，具体的字段含义如下
 
     def get_spl(self, key):
         return self.spls.get(key, "Key not found")
+
+
+def check_cms_status(func: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    装饰器：检查云监控2.0相关是否开通服务
+
+    Args:
+        func: 被装饰的函数
+
+    Returns:
+        装饰后的函数，会在运行前检查服务
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        res = get_cms_alert_event_log_store(kwargs["ctx"], kwargs["regionId"])
+        if res is None:
+            return {
+                "solution": "请开通阿里云云监控2.0的告警功能",
+                "message": "未找到该区域的告警日志存储",
+            }
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def get_cms_alert_event_log_store(ctx: Context, regionId: str):
+    if not ctx:
+        return None
+    if regionId == "":
+        return None
+    cms_client: Client = ctx.request_context.lifespan_context["cms_client"].with_region(
+        regionId
+    )
+    request: ListProjectRequest = ListProjectRequest(
+        project_name="cms-alert-center",
+        size=100,
+    )
+    response: ListProjectResponse = cms_client.list_project(request)
+    projects = [
+        {
+            "project_name": project.project_name,
+            "description": project.description,
+            "regionId": project.region,
+        }
+        for project in response.body.projects
+        if project.project_name.endswith(regionId)
+    ]
+    if len(projects) == 0:
+        return None
+
+    project = projects[0]["project_name"]
+
+    request: ListLogStoresRequest = ListLogStoresRequest(
+        logstore_name="alert-rule-event-default",
+        size=100,
+    )
+    response: ListLogStoresResponse = cms_client.list_log_stores(project, request)
+    log_store_list = [
+        log_store
+        for log_store in response.body.logstores
+        if log_store.endswith(regionId)
+    ]
+    if len(log_store_list) == 0:
+        return None
+
+    log_store = log_store_list[0]
+    return {"project": project, "log_store": log_store}
