@@ -65,7 +65,7 @@ async def test_cms_summarize_alert_events_success(
     mock_request_context: Context,
 ):
     """测试SLS查询执行成功的情况"""
-    tool = mcp_server._tool_manager.get_tool("cms_summarize_alert_events ")
+    tool = mcp_server._tool_manager.get_tool("cms_summarize_alert_events")
     text = await tool.run(
         {
             "from_timestamp": int(datetime.now().timestamp()) - 3600,
