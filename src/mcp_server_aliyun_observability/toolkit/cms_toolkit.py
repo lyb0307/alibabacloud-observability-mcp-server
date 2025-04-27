@@ -360,6 +360,109 @@ class CMSToolkit:
                 logger.error(f"调用CMS AI工具失败: {str(e)}")
                 raise
 
+        @self.server.tool()
+        @retry(
+            stop=stop_after_attempt(2),
+            wait=wait_fixed(1),
+            retry=retry_if_exception_type(Exception),
+            reraise=True,
+        )
+        @handle_tea_exception
+        def cms_execute_promql_query(
+            ctx: Context,
+            project: str = Field(..., description="sls project name"),
+            metricStore: str = Field(..., description="sls metric store name"),
+            query: str = Field(..., description="query"),
+            fromTimestampInSeconds: int = Field(
+                ...,
+                description="from timestamp,unit is second,should be unix timestamp, only number,no other characters",
+            ),
+            toTimestampInSeconds: int = Field(
+                ...,
+                description="to timestamp,unit is second,should be unix timestamp, only number,no other characters",
+            ),
+            regionId: str = Field(
+                default=...,
+                description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
+            ),
+        ) -> dict:
+            """执行Prometheus指标查询。
+
+            ## 功能概述
+
+            该工具用于在指定的SLS项目和时序库上执行查询语句，并返回查询结果。查询将在指定的时间范围内执行。 如果上下文没有提到具体的 SQL 语句，必须优先使用 cms_translate_text_to_promql 工具生成查询语句,无论问题有多简单
+
+            ## 使用场景
+
+            - 当需要根据特定条件查询日志数据时
+            - 当需要分析特定时间范围内的日志信息时
+            - 当需要检索日志中的特定事件或错误时
+            - 当需要统计日志数据的聚合信息时
+
+
+            ## 查询语法
+
+            查询必须使用PromQL有效的查询语法，而非自然语言。
+
+            ## 时间范围
+
+            查询必须指定时间范围：
+            - fromTimestampInSeconds: 开始时间戳（秒）
+            - toTimestampInSeconds: 结束时间戳（秒）
+            默认为最近15分钟，需要调用 sls_get_current_time 工具获取当前时间
+
+            ## 查询示例
+
+            - "帮我查询下 job xxx 的采集状态"
+            - "查一下当前有多少个 Pod"
+
+            ## 输出
+            查询结果为：xxxxx
+            对应的图示：将 image 中的 URL 连接到图示中，并展示在图示中。
+
+            Args:
+                ctx: MCP上下文，用于访问CMS客户端
+                project: SLS项目名称
+                metricStore: SLS日志库名称
+                query: PromQL查询语句
+                fromTimestampInSeconds: 查询开始时间戳（秒）
+                toTimestampInSeconds: 查询结束时间戳（秒）
+                regionId: 阿里云区域ID
+
+            Returns:
+                查询结果列表，每个元素为一条日志记录
+            """
+            spls = CMSSPLContainer()
+            cms_client: Client = ctx.request_context.lifespan_context[
+                "cms_client"
+            ].with_region(regionId)
+            query = spls.get_spl("raw-promql-template").replace("<PROMQL>", query)
+            print(query)
+
+            request: GetLogsRequest = GetLogsRequest(
+                query=query,
+                from_=fromTimestampInSeconds,
+                to=toTimestampInSeconds,
+            )
+            runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
+            runtime.read_timeout = 60000
+            runtime.connect_timeout = 60000
+            response: GetLogsResponse = cms_client.get_logs_with_options(
+                project, metricStore, request, headers={}, runtime=runtime
+            )
+            response_body: List[Dict[str, Any]] = response.body
+            
+            result = {
+                "data": response_body,
+                "message": (
+                    "success"
+                    if response_body
+                    else "Not found data by query,you can try to change the query or time range"
+                ),
+            }
+            print(result)
+            return result
+
 
 class CMSSPLContainer:
     def __init__(self):
@@ -447,7 +550,24 @@ situation -> 表示某个告警的现状，具体的字段含义如下
 | project rule_id, rule_list, output;
 """
 
-    def get_spl(self, key):
+        self.spls[
+            "raw-promql-template"
+        ] = r"""
+.set "sql.session.velox_support_row_constructor_enabled" = 'true';
+.set "sql.session.presto_velox_mix_run_not_check_linked_agg_enabled" = 'true';
+.set "sql.session.presto_velox_mix_run_support_complex_type_enabled" = 'true';
+.set "sql.session.velox_sanity_limit_enabled" = 'false'; 
+
+.metricstore with(promql_query='<PROMQL>')
+| stats arr_ts = array_agg(__ts__), arr_val = array_agg(__value__), title_agg = array_agg(json_format(cast(__labels__ as json))), anomalies_score_series = array_agg(array[0.0]), anomalies_type_series = array_agg(array['']),cnt = count(*)
+| extend cluster_res = cluster(arr_val,'kmeans')
+| extend image = series_anomalies_plot(arr_ts, arr_val, anomalies_score_series, anomalies_type_series, title_agg, '{
+  "n_col": 2,
+  "subplot":true
+}')
+"""
+
+    def get_spl(self, key) -> str:
         return self.spls.get(key, "Key not found")
 
 

@@ -64,10 +64,40 @@ async def test_cms_summarize_alert_events_success(
     mcp_server: FastMCP,
     mock_request_context: Context,
 ):
-    """测试SLS查询执行成功的情况"""
+    """测试CMS 告警总结成功的情况"""
     tool = mcp_server._tool_manager.get_tool("cms_summarize_alert_events")
     text = await tool.run(
         {
+            "fromTimestampInSeconds": int(datetime.now().timestamp()) - 3600,
+            "toTimestampInSeconds": int(datetime.now().timestamp()),
+            "regionId": os.getenv("TEST_REGION"),
+        },
+        context=mock_request_context,
+    )
+    assert text is not None
+    # """
+    #  response_body: List[Dict[str, Any]] = response.body
+    #         result = {
+    #             "data": response_body,
+    # """
+    # item = text["data"][0]
+    # assert item["total"] is not None
+    # assert text["message"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_cms_execute_promql_query_success(
+    tool_manager: CMSToolkit,
+    mcp_server: FastMCP,
+    mock_request_context: Context,
+):
+    """测试PromQL查询执行成功的情况"""
+    tool = mcp_server._tool_manager.get_tool("cms_execute_promql_query")
+    text = await tool.run(
+        {
+            "project": os.getenv("TEST_PROJECT"),
+            "metricStore": os.getenv("TEST_METRICSTORE"),
+            "query": "sum(kube_pod_info) by (namespace)",
             "fromTimestampInSeconds": int(datetime.now().timestamp()) - 3600,
             "toTimestampInSeconds": int(datetime.now().timestamp()),
             "regionId": os.getenv("TEST_REGION"),
