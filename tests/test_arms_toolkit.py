@@ -75,14 +75,38 @@ async def test_arms_profile_flame_analysis_success(
     tool = mcp_server._tool_manager.get_tool("arms_profile_flame_analysis")
     result_data = await tool.run(
         {
-            "service_name": "test_service",
+            "pid": "test_pid",
             "start_ms": "1609459200000",
             "end_ms": "1609545600000",
             "profile_type": "cpu",
             "ip": "127.0.0.1",
-            "language": "java",
-            "thread": "",
-            "thread_group": "",
+            "thread": "main-thread",
+            "thread_group": "default-group",
+            "region_id": "cn-hangzhou",
+        },
+        context=mock_request_context,
+    )
+    assert result_data is not None
+
+@pytest.mark.asyncio
+async def test_arms_diff_flame_analysis_success(
+    tool_manager: ArmsToolkit,
+    mcp_server: FastMCP,
+    mock_request_context: Context,
+):
+    """测试arms_diff_flame_analysis成功的情况"""
+    tool = mcp_server._tool_manager.get_tool("arms_diff_flame_analysis")
+    result_data = await tool.run(
+        {
+            "pid": "test_pid",
+            "base_start_ms": "1609459200000",
+            "base_end_ms": "1609462800000",
+            "compare_start_ms": "1609545600000",
+            "compare_end_ms": "1609549200000",
+            "profile_type": "cpu",
+            "ip": "127.0.0.1",
+            "thread": "main-thread",
+            "thread_group": "default-group",
             "region_id": "cn-hangzhou",
         },
         context=mock_request_context,

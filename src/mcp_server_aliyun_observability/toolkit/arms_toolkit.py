@@ -6,7 +6,8 @@ from alibabacloud_sls20201230.client import Client
 from alibabacloud_arms20190808.models import (
     SearchTraceAppByPageRequest,
     SearchTraceAppByPageResponse,
-    SearchTraceAppByPageResponseBodyPageBean,
+    SearchTraceAppByPageResponseBodyPageBean, GetTraceAppRequest, GetTraceAppResponse,
+    GetTraceAppResponseBodyTraceApp,
 )
 from alibabacloud_tea_util import models as util_models
 from alibabacloud_sls20201230.models import CallAiToolsRequest, CallAiToolsResponse
@@ -209,15 +210,14 @@ class ArmsToolkit:
         @self.server.tool()
         def arms_profile_flame_analysis(
                 ctx: Context,
-                service_name: str = Field(..., description="arms service name"),
-                start_ms: str = Field(..., description="profile start ms"),
-                end_ms: str = Field(..., description="profile end ms"),
-                profile_type = Field(..., description="profile type, like 'cpu' 'alloc_in_new_tlab_bytes'"),
-                ip: str = Field(..., description="arms service host ip"),
-                language: str = Field(..., description="arms service language, like 'java' 'go'"),
-                thread: str = Field(..., description="arms service thread id"),
-                thread_group: str = Field(..., description="arms service thread group"),
-                region_id: str = Field(default=...,
+                pid: str = Field(..., description="arms application id"),
+                startMs: str = Field(..., description="profile start ms"),
+                endMs: str = Field(..., description="profile end ms"),
+                profileType: str = Field(default="cpu", description="profile type, like 'cpu' 'memory'"),
+                ip: str = Field(None, description="arms service host ip"),
+                thread: str = Field(None, description="arms service thread id"),
+                threadGroup: str = Field(None, description="arms service thread group"),
+                regionId: str = Field(default=...,
                     description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
                 ),
         ) -> dict:
@@ -233,55 +233,178 @@ class ArmsToolkit:
 
             ## 查询示例
 
-            - "帮我分析下应用 XXX 的火焰图性能热点"
+            - "帮我分析下ARMS应用 XXX 的火焰图性能热点"
 
             Args:
                 ctx: MCP上下文，用于访问SLS客户端
-                service_name: ARMS应用监控服务名称，可以通过arms_search_apps工具获取
-                start_ms: 分析的开始时间，通过get_current_time工具获取毫秒级时间戳
-                end_ms: 分析的结束时间，通过get_current_time工具获取毫秒级时间戳
-                profile_type: Profile类型，用于选择需要分析的Profile指标，支持CPU热点和内存热点，如'cpu'、'alloc_in_new_tlab_bytes'
-                language: ARMS服务的编程语言，如'java'、'go'等
+                pid: ARMS应用监控服务PID
+                startMs: 分析的开始时间，通过get_current_time工具获取毫秒级时间戳
+                endMs: 分析的结束时间，通过get_current_time工具获取毫秒级时间戳
+                profileType: Profile类型，用于选择需要分析的Profile指标，支持CPU热点和内存热点，如'cpu'、'memory'
                 ip: ARMS应用服务主机地址，非必要参数，用于选择所在的服务机器，如有多个填写时以英文逗号","分隔，如'192.168.0.1,192.168.0.2'，不填写默认查询服务所在的所有IP
                 thread: 服务线程名称，非必要参数，用于选择对应线程，如有多个填写时以英文逗号","分隔，如'C1 CompilerThre,C2 CompilerThre'，不填写默认查询服务所有线程
-                thread_group: 服务聚合线程组名称，非必要参数，用于选择对应线程组，如有多个填写时以英文逗号","分隔，如'http-nio-*-exec-*,http-nio-*-ClientPoller-*'，不填写默认查询服务所有聚合线程组
-                region_id: 阿里云区域ID，如'cn-hangzhou'、'cn-shanghai'等
+                threadGroup: 服务聚合线程组名称，非必要参数，用于选择对应线程组，如有多个填写时以英文逗号","分隔，如'http-nio-*-exec-*,http-nio-*-ClientPoller-*'，不填写默认查询服务所有聚合线程组
+                regionId: 阿里云区域ID，如'cn-hangzhou'、'cn-shanghai'等
             """
-            # Validate language parameter
-            if language not in ['java', 'golang']:
-                raise ValueError(f"暂不支持的语言类型: {language}. 当前仅支持 'java' 或 'go'")
-
             try:
-                sls_client: Client = ctx.request_context.lifespan_context[
-                    "sls_client"
-                ].with_region("cn-shanghai")
-                request: CallAiToolsRequest = CallAiToolsRequest()
-                request.tool_name = "profile_flame_analysis"
-                request.region_id = region_id
+                valid_types = ['cpu', 'memory']
+                if profileType not in valid_types:
+                    raise ValueError(f"无效的profileType: {profileType}, 仅支持: {', '.join(valid_types)}")
+
+                # Connect to ARMS client
+                arms_client: ArmsClient = ctx.request_context.lifespan_context["arms_client"].with_region(regionId)
+                request: GetTraceAppRequest = GetTraceAppRequest(pid=pid, region_id=regionId)
+                response: GetTraceAppResponse = arms_client.get_trace_app(request)
+                trace_app: GetTraceAppResponseBodyTraceApp = response.body.trace_app
+
+                if not trace_app:
+                    raise ValueError("无法找到应用信息")
+
+                # Extract application details
+                service_name = trace_app.app_name
+                language = trace_app.language
+
+                # Validate language parameter
+                if language not in ['java', 'go']:
+                    raise ValueError(f"暂不支持的语言类型: {language}. 当前仅支持 'java' 和 'go'")
+
+                # Prepare SLS client for Flame analysis
+                sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region("cn-shanghai")
+                ai_request: CallAiToolsRequest = CallAiToolsRequest(
+                    tool_name="profile_flame_analysis",
+                    region_id=regionId
+                )
+
                 params: dict[str, Any] = {
                     "serviceName": service_name,
-                    "startMs": start_ms,
-                    "endMs": end_ms,
-                    "profileType": profile_type,
+                    "startMs": startMs,
+                    "endMs": endMs,
+                    "profileType": profileType,
                     "ip": ip,
                     "language": language,
                     "thread": thread,
-                    "threadGroup": thread_group,
+                    "threadGroup": threadGroup,
                     "sys.query": f"帮我分析下应用 {service_name} 的火焰图性能热点问题",
                 }
-                request.params = params
-                runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
-                runtime.read_timeout = 60000
-                runtime.connect_timeout = 60000
-                tool_response: CallAiToolsResponse = (
-                    sls_client.call_ai_tools_with_options(
-                        request=request, headers={}, runtime=runtime
-                    )
-                )
+
+                ai_request.params = params
+                runtime: util_models.RuntimeOptions = util_models.RuntimeOptions(read_timeout=60000,
+                                                                                 connect_timeout=60000)
+
+                tool_response: CallAiToolsResponse = sls_client.call_ai_tools_with_options(request=ai_request,
+                                                                                           headers={},
+                                                                                           runtime=runtime)
                 data = tool_response.body
+
                 if "------answer------\n" in data:
                     data = data.split("------answer------\n")[1]
-                return data
+
+                return {
+                    "data": data
+                }
+
             except Exception as e:
                 logger.error(f"调用火焰图数据性能热点AI工具失败: {str(e)}")
+                raise
+
+        @self.server.tool()
+        def arms_diff_profile_flame_analysis(
+                ctx: Context,
+                pid: str = Field(..., description="arms application id"),
+                baseStartMs: str = Field(..., description="base profile start ms"),
+                baseEndMs: str = Field(..., description="base profile end ms"),
+                compareStartMs: str = Field(..., description="compare profile start ms"),
+                compareEndMs: str = Field(..., description="compare profile end ms"),
+                profileType: str = Field(default="cpu", description="profile type, like 'cpu' 'memory'"),
+                ip: str = Field(None, description="arms service host ip"),
+                thread: str = Field(None, description="arms service thread id"),
+                threadGroup: str = Field(None, description="arms service thread group"),
+                regionId: str = Field(default=...,
+                                       description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
+                                       ),
+        ) -> dict:
+            """对比两个时间段火焰图的性能变化。
+
+            ## 功能概述
+
+            对应用在两个不同时间段内的性能进行分析，生成差分火焰图。通常用于发布前后或性能优化前后性能对比，帮助识别性能提升或退化。
+
+            ## 使用场景
+
+            - 发布前后、性能优化前后不同时间段火焰图性能对比
+
+            ## 查询示例
+
+            - "帮我分析应用 XXX 在发布前后的性能变化情况"
+
+            Args:
+                ctx: MCP上下文，用于访问SLS客户端
+                pid: ARMS应用监控服务ID
+                baseStartMs: 基准分析的开始时间
+                baseEndMs: 基准分析的结束时间
+                compareStartMs: 对比分析的开始时间
+                compareEndMs: 对比分析的结束时间
+                profileType: Profile类型，如'cpu'、'memory'
+                ip: ARMS应用服务主机地址，非必要参数，用于选择所在的服务机器，如有多个填写时以英文逗号","分隔，如'192.168.0.1,192.168.0.2'，不填写默认查询服务所在的所有IP
+                thread: 服务线程名称，非必要参数，用于选择对应线程，如有多个填写时以英文逗号","分隔，如'C1 CompilerThre,C2 CompilerThre'，不填写默认查询服务所有线程
+                threadGroup: 服务聚合线程组名称，非必要参数，用于选择对应线程组，如有多个填写时以英文逗号","分隔，如'http-nio-*-exec-*,http-nio-*-ClientPoller-*'，不填写默认查询服务所有聚合线程组
+                regionId: 阿里云区域ID，如'cn-hangzhou'、'cn-shanghai'等
+            """
+            try:
+                valid_types = ['cpu', 'memory']
+                if profileType not in valid_types:
+                    raise ValueError(f"无效的profileType: {profileType}, 仅支持: {', '.join(valid_types)}")
+
+                arms_client: ArmsClient = ctx.request_context.lifespan_context["arms_client"].with_region(regionId)
+                request: GetTraceAppRequest = GetTraceAppRequest(
+                    pid=pid,
+                    region_id=regionId,
+                )
+                response: GetTraceAppResponse = arms_client.get_trace_app(request)
+                trace_app: GetTraceAppResponseBodyTraceApp = response.body.trace_app
+
+                if not trace_app:
+                    raise ValueError("无法找到应用信息")
+
+                service_name = trace_app.app_name
+                language = trace_app.language
+
+                if language not in ['java', 'go']:
+                    raise ValueError(f"暂不支持的语言类型: {language}. 当前仅支持 'java' 和 'go'")
+
+                sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region("cn-shanghai")
+                ai_request: CallAiToolsRequest = CallAiToolsRequest(
+                    tool_name="diff_profile_flame_analysis",
+                    region_id=regionId
+                )
+
+                params: dict[str, Any] = {
+                    "serviceName": service_name,
+                    "baseStartMs": baseStartMs,
+                    "baseEndMs": baseEndMs,
+                    "compareStartMs": compareStartMs,
+                    "compareEndMs": compareEndMs,
+                    "profileType": profileType,
+                    "ip": ip,
+                    "language": language,
+                    "thread": thread,
+                    "threadGroup": threadGroup,
+                    "sys.query": f"帮我分析应用 {service_name} 在两个时间段前后的性能变化情况",
+                }
+
+                ai_request.params = params
+                runtime: util_models.RuntimeOptions = util_models.RuntimeOptions(read_timeout=60000, connect_timeout=60000)
+
+                tool_response: CallAiToolsResponse = sls_client.call_ai_tools_with_options(request=ai_request, headers={}, runtime=runtime)
+                data = tool_response.body
+
+                if "------answer------\n" in data:
+                    data = data.split("------answer------\n")[1]
+
+                return {
+                    "data": data
+                }
+
+            except Exception as e:
+                logger.error(f"调用差分火焰图性能变化分析工具失败: {str(e)}")
                 raise
