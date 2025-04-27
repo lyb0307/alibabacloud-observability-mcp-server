@@ -18,6 +18,8 @@ from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
+from mcp_server_aliyun_observability.utils import handle_tea_exception
+
 # 配置日志
 logger = logging.getLogger(__name__)
 
@@ -39,6 +41,7 @@ class CMSToolkit:
         """register cms and prometheus related tools functions"""
 
         @self.server.tool()
+        @handle_tea_exception
         def cms_summarize_alert_events(
             ctx: Context,
             fromTimestampInSeconds: int = Field(
@@ -97,106 +100,116 @@ class CMSToolkit:
             Returns:
                 日志库名称的告警事件信息字典
             """
-            try:
-                # get project and logstore
-                cms_client: Client = ctx.request_context.lifespan_context[
-                    "cms_client"
-                ].with_region(regionId)
-                request: ListProjectRequest = ListProjectRequest(
-                    project_name="cms-alert-center",
-                    size=100,
-                )
-                response: ListProjectResponse = cms_client.list_project(request)
-                projects = [
-                    {
-                        "project_name": project.project_name,
-                        "description": project.description,
-                        "regionId": project.region,
-                    }
-                    for project in response.body.projects
-                    if project.project_name.endswith(regionId)
-                ]
-                project = projects[0]["project_name"]
-
-                request: ListLogStoresRequest = ListLogStoresRequest(
-                    logstore_name="alert-rule-event-default",
-                    size=100,
-                )
-                response: ListLogStoresResponse = cms_client.list_log_stores(
-                    project, request
-                )
-                log_store_list = [
-                    log_store
-                    for log_store in response.body.logstores
-                    if log_store.endswith(regionId)
-                ]
-
-                log_store = log_store_list[0]
-
-                runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
-                runtime.read_timeout = 60000
-                runtime.connect_timeout = 60000
-
-                # 获取告警总揽信息
-                request: GetLogsRequest = GetLogsRequest(
-                    query="* | SELECT  COUNT(CASE WHEN type = 'ALERT' THEN 1 END) AS alert_events ,COUNT(DISTINCT CASE WHEN type = 'ALERT' AND status != 'RECOVERED' THEN source END) AS alert_rules FROM log",
-                    from_=fromTimestampInSeconds,
-                    to=toTimestampInSeconds,
-                )
-                response: GetLogsResponse = cms_client.get_logs_with_options(
-                    project, log_store, request, headers={}, runtime=runtime
-                )
-                alert_event_total: List[Dict[str, Any]] = response.body
-                print(alert_event_total)
-
-                # 获取告警按照严重等级信息
-                request: GetLogsRequest = GetLogsRequest(
-                    query="* | SELECT severity, COUNT(*) AS alert_count FROM log GROUP BY severity order by alert_count desc",
-                    from_=fromTimestampInSeconds,
-                    to=toTimestampInSeconds,
-                )
-                response: GetLogsResponse = cms_client.get_logs_with_options(
-                    project, log_store, request, headers={}, runtime=runtime
-                )
-                alert_severity_info: List[Dict[str, Any]] = response.body
-                print(alert_severity_info)
-
-                # 获取告警事件按照告警规则维度的信息
-                request: GetLogsRequest = GetLogsRequest(
-                    query="type:alert | set session mode=scan; SELECT source as rule_id, subject, json_extract_scalar(data, '$.rule.query') as rule_query, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (rule_id, subject,rule_query) ORDER BY percentage DESC limit 10",
-                    from_=fromTimestampInSeconds,
-                    to=toTimestampInSeconds,
-                )
-                response: GetLogsResponse = cms_client.get_logs_with_options(
-                    project, log_store, request, headers={}, runtime=runtime
-                )
-                alert_rule_info: List[Dict[str, Any]] = response.body
-                print(alert_rule_info)
-
-                # 获取告警事件按照资源维度的信息
-                request: GetLogsRequest = GetLogsRequest(
-                    query="type:alert | set session mode=scan;  SELECT json_extract(resource, '$.entity') as entity, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (entity) ORDER BY count DESC limit 100",
-                    from_=fromTimestampInSeconds,
-                    to=toTimestampInSeconds,
-                )
-                response: GetLogsResponse = cms_client.get_logs_with_options(
-                    project, log_store, request, headers={}, runtime=runtime
-                )
-                alert_resource_info: List[Dict[str, Any]] = response.body
-                print(alert_resource_info)
-
-                result = {
-                    "alert_event_total": alert_event_total,
-                    "alert_severity_info": alert_severity_info,
-                    "alert_rule_percent": alert_rule_info,
-                    "alert_resource_info": alert_resource_info,
+            # get project and logstore
+            cms_client: Client = ctx.request_context.lifespan_context[
+                "cms_client"
+            ].with_region(regionId)
+            request: ListProjectRequest = ListProjectRequest(
+                project_name="cms-alert-center",
+                size=100,
+            )
+            response: ListProjectResponse = cms_client.list_project(request)
+            projects = [
+                {
+                    "project_name": project.project_name,
+                    "description": project.description,
+                    "regionId": project.region,
                 }
-                return result
-            except Exception as e:
-                logger.error(f"调用CMS AI工具失败: {str(e)}")
-                raise
+                for project in response.body.projects
+                if project.project_name.endswith(regionId)
+            ]
+            if len(projects) == 0:
+                return {
+                    "errorMessage": "no project found",
+                    "description": "未找到合适的存储",
+                    "solution": "请您检查 project 是否存在，是否开通 CMS2.0 告警功能",
+                }
+
+            project = projects[0]["project_name"]
+
+            request: ListLogStoresRequest = ListLogStoresRequest(
+                logstore_name="alert-rule-event-default",
+                size=100,
+            )
+            response: ListLogStoresResponse = cms_client.list_log_stores(
+                project, request
+            )
+            log_store_list = [
+                log_store
+                for log_store in response.body.logstores
+                if log_store.endswith(regionId)
+            ]
+            if len(log_store_list) == 0:
+                return {
+                    "errorMessage": "no log_store found",
+                    "description": "未找到合适的存储",
+                    "solution": "请您检查 log_store 是否存在，是否开通 CMS2.0 告警功能",
+                }
+
+            log_store = log_store_list[0]
+
+            runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
+            runtime.read_timeout = 60000
+            runtime.connect_timeout = 60000
+
+            # 获取告警总揽信息
+            request: GetLogsRequest = GetLogsRequest(
+                query="* | SELECT  COUNT(CASE WHEN type = 'ALERT' THEN 1 END) AS alert_events ,COUNT(DISTINCT CASE WHEN type = 'ALERT' AND status != 'RECOVERED' THEN source END) AS alert_rules FROM log",
+                from_=fromTimestampInSeconds,
+                to=toTimestampInSeconds,
+            )
+            response: GetLogsResponse = cms_client.get_logs_with_options(
+                project, log_store, request, headers={}, runtime=runtime
+            )
+            alert_event_total: List[Dict[str, Any]] = response.body
+            print(alert_event_total)
+
+            # 获取告警按照严重等级信息
+            request: GetLogsRequest = GetLogsRequest(
+                query="* | SELECT severity, COUNT(*) AS alert_count FROM log GROUP BY severity order by alert_count desc",
+                from_=fromTimestampInSeconds,
+                to=toTimestampInSeconds,
+            )
+            response: GetLogsResponse = cms_client.get_logs_with_options(
+                project, log_store, request, headers={}, runtime=runtime
+            )
+            alert_severity_info: List[Dict[str, Any]] = response.body
+            print(alert_severity_info)
+
+            # 获取告警事件按照告警规则维度的信息
+            request: GetLogsRequest = GetLogsRequest(
+                query="type:alert | set session mode=scan; SELECT source as rule_id, subject, json_extract_scalar(data, '$.rule.query') as rule_query, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (rule_id, subject,rule_query) ORDER BY percentage DESC limit 10",
+                from_=fromTimestampInSeconds,
+                to=toTimestampInSeconds,
+            )
+            response: GetLogsResponse = cms_client.get_logs_with_options(
+                project, log_store, request, headers={}, runtime=runtime
+            )
+            alert_rule_info: List[Dict[str, Any]] = response.body
+            print(alert_rule_info)
+
+            # 获取告警事件按照资源维度的信息
+            request: GetLogsRequest = GetLogsRequest(
+                query="type:alert | set session mode=scan;  SELECT json_extract(resource, '$.entity') as entity, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (entity) ORDER BY count DESC limit 100",
+                from_=fromTimestampInSeconds,
+                to=toTimestampInSeconds,
+            )
+            response: GetLogsResponse = cms_client.get_logs_with_options(
+                project, log_store, request, headers={}, runtime=runtime
+            )
+            alert_resource_info: List[Dict[str, Any]] = response.body
+            print(alert_resource_info)
+
+            result = {
+                "alert_event_total": alert_event_total,
+                "alert_severity_info": alert_severity_info,
+                "alert_rule_percent": alert_rule_info,
+                "alert_resource_info": alert_resource_info,
+            }
+            return result
 
         @self.server.tool()
+        @handle_tea_exception
         def cms_governance_alert_storm(
             ctx: Context,
             fromTimestampInSeconds: int = Field(
@@ -233,86 +246,94 @@ class CMSToolkit:
             Returns:
                 告警治理建议信息字典
             """
-            try:
-                # get project and logstore
-                cms_client: Client = ctx.request_context.lifespan_context[
-                    "cms_client"
-                ].with_region(regionId)
-                request: ListProjectRequest = ListProjectRequest(
-                    project_name="cms-alert-center",
-                    size=100,
-                )
-                response: ListProjectResponse = cms_client.list_project(request)
-                projects = [
-                    {
-                        "project_name": project.project_name,
-                        "description": project.description,
-                        "regionId": project.region,
-                    }
-                    for project in response.body.projects
-                    if project.project_name.endswith(regionId)
-                ]
-                project = projects[0]["project_name"]
-
-                request: ListLogStoresRequest = ListLogStoresRequest(
-                    logstore_name="alert-rule-event-default",
-                    size=100,
-                )
-                response: ListLogStoresResponse = cms_client.list_log_stores(
-                    project, request
-                )
-                log_store_list = [
-                    log_store
-                    for log_store in response.body.logstores
-                    if log_store.endswith(regionId)
-                ]
-
-                log_store = log_store_list[0]
-
-                runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
-                runtime.read_timeout = 60000
-                runtime.connect_timeout = 60000
-
-                # 获取告警事件按照告警规则维度的信息
-                request: GetLogsRequest = GetLogsRequest(
-                    query="type:alert | set session mode=scan; SELECT source as rule_id, subject, json_extract_scalar(data, '$.rule.query') as rule_query, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (rule_id, subject,rule_query) ORDER BY percentage DESC limit 10",
-                    from_=fromTimestampInSeconds,
-                    to=toTimestampInSeconds,
-                )
-                response: GetLogsResponse = cms_client.get_logs_with_options(
-                    project, log_store, request, headers={}, runtime=runtime
-                )
-                alert_rule_info: List[Dict[str, Any]] = response.body
-                print(alert_rule_info)
-
-                # 获取告警事件llm分析结果
-                cms_spls = CMSSPLContainer()
-                spl = cms_spls.get_spl("threshold-rule-analysis")
-                request: GetLogsRequest = GetLogsRequest(
-                    query=spl,
-                    from_=fromTimestampInSeconds,
-                    to=toTimestampInSeconds,
-                )
-                response: GetLogsResponse = cms_client.get_logs_with_options(
-                    project, log_store, request, headers={}, runtime=runtime
-                )
-                threshold_rule_result: List[Dict[str, Any]] = response.body
-                print(threshold_rule_result)
-
-                for item in threshold_rule_result:
-                    for idx in range(len(alert_rule_info)):
-                        if alert_rule_info[idx]["rule_id"] == item["rule_id"]:
-                            alert_rule_info[idx]["suggest"] = item["output"]
-                print(alert_rule_info)
-
-                result = {
-                    "alert_rule_percent": alert_rule_info,
-                    # "alert_resource_info": alert_resource_info,
+            # get project and logstore
+            cms_client: Client = ctx.request_context.lifespan_context[
+                "cms_client"
+            ].with_region(regionId)
+            request: ListProjectRequest = ListProjectRequest(
+                project_name="cms-alert-center",
+                size=100,
+            )
+            response: ListProjectResponse = cms_client.list_project(request)
+            projects = [
+                {
+                    "project_name": project.project_name,
+                    "description": project.description,
+                    "regionId": project.region,
                 }
-                return result
-            except Exception as e:
-                logger.error(f"调用CMS AI工具失败: {str(e)}")
-                raise
+                for project in response.body.projects
+                if project.project_name.endswith(regionId)
+            ]
+            if len(projects) == 0:
+                return {
+                    "errorMessage": "no project found",
+                    "description": "未找到合适的存储",
+                    "solution": "请您检查 project 是否存在，是否开通 CMS2.0 告警功能",
+                }
+            project = projects[0]["project_name"]
+
+            request: ListLogStoresRequest = ListLogStoresRequest(
+                logstore_name="alert-rule-event-default",
+                size=100,
+            )
+            response: ListLogStoresResponse = cms_client.list_log_stores(
+                project, request
+            )
+            log_store_list = [
+                log_store
+                for log_store in response.body.logstores
+                if log_store.endswith(regionId)
+            ]
+            if len(projects) == 0:
+                return {
+                    "errorMessage": "no log_store found",
+                    "description": "未找到合适的存储",
+                    "solution": "请您检查 log_store 是否存在，是否开通 CMS2.0 告警功能",
+                }
+
+            log_store = log_store_list[0]
+
+            runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
+            runtime.read_timeout = 60000
+            runtime.connect_timeout = 60000
+
+            # 获取告警事件按照告警规则维度的信息
+            request: GetLogsRequest = GetLogsRequest(
+                query="type:alert | set session mode=scan; SELECT source as rule_id, subject, json_extract_scalar(data, '$.rule.query') as rule_query, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (rule_id, subject,rule_query) ORDER BY percentage DESC limit 10",
+                from_=fromTimestampInSeconds,
+                to=toTimestampInSeconds,
+            )
+            response: GetLogsResponse = cms_client.get_logs_with_options(
+                project, log_store, request, headers={}, runtime=runtime
+            )
+            alert_rule_info: List[Dict[str, Any]] = response.body
+            print(alert_rule_info)
+
+            # 获取告警事件llm分析结果
+            cms_spls = CMSSPLContainer()
+            spl = cms_spls.get_spl("threshold-rule-analysis")
+            request: GetLogsRequest = GetLogsRequest(
+                query=spl,
+                from_=fromTimestampInSeconds,
+                to=toTimestampInSeconds,
+            )
+            response: GetLogsResponse = cms_client.get_logs_with_options(
+                project, log_store, request, headers={}, runtime=runtime
+            )
+            threshold_rule_result: List[Dict[str, Any]] = response.body
+            print(threshold_rule_result)
+
+            for item in threshold_rule_result:
+                for idx in range(len(alert_rule_info)):
+                    if alert_rule_info[idx]["rule_id"] == item["rule_id"]:
+                        alert_rule_info[idx]["suggest"] = item["output"]
+            print(alert_rule_info)
+
+            result = {
+                "alert_rule_percent": alert_rule_info,
+                # "alert_resource_info": alert_resource_info,
+            }
+            return result
 
         @self.server.tool()
         @retry(
@@ -321,6 +342,7 @@ class CMSToolkit:
             retry=retry_if_exception_type(Exception),
             reraise=True,
         )
+        @handle_tea_exception
         def cms_translate_text_to_promql(
             ctx: Context,
             text: str = Field(
