@@ -71,18 +71,17 @@ async def test_arms_profile_flame_analysis_success(
     mock_request_context: Context,
 ):
     """测试arms_profile_flame_analysis成功的情况"""
-    tools = mcp_server._tool_manager.list_tools()
     tool = mcp_server._tool_manager.get_tool("arms_profile_flame_analysis")
     result_data = await tool.run(
         {
             "pid": "test_pid",
-            "start_ms": "1609459200000",
-            "end_ms": "1609545600000",
-            "profile_type": "cpu",
+            "startMs": "1609459200000",
+            "endMs": "1609545600000",
+            "profileType": "cpu",
             "ip": "127.0.0.1",
             "thread": "main-thread",
-            "thread_group": "default-group",
-            "region_id": "cn-hangzhou",
+            "threadGroup": "default-group",
+            "regionId": "cn-hangzhou",
         },
         context=mock_request_context,
     )
@@ -95,19 +94,19 @@ async def test_arms_diff_flame_analysis_success(
     mock_request_context: Context,
 ):
     """测试arms_diff_flame_analysis成功的情况"""
-    tool = mcp_server._tool_manager.get_tool("arms_diff_flame_analysis")
+    tool = mcp_server._tool_manager.get_tool("arms_diff_profile_flame_analysis")
     result_data = await tool.run(
         {
             "pid": "test_pid",
-            "base_start_ms": "1609459200000",
-            "base_end_ms": "1609462800000",
-            "compare_start_ms": "1609545600000",
-            "compare_end_ms": "1609549200000",
-            "profile_type": "cpu",
+            "baseStartMs": "1609459200000",
+            "baseEndMs": "1609462800000",
+            "compareStartMs": "1609545600000",
+            "compareEndMs": "1609549200000",
+            "profileType": "cpu",
             "ip": "127.0.0.1",
             "thread": "main-thread",
-            "thread_group": "default-group",
-            "region_id": "cn-hangzhou",
+            "threadGroup": "default-group",
+            "regionId": "cn-hangzhou",
         },
         context=mock_request_context,
     )
