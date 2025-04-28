@@ -312,17 +312,16 @@ class ArmsToolkit:
         def arms_diff_profile_flame_analysis(
                 ctx: Context,
                 pid: str = Field(..., description="arms application id"),
-                baseStartMs: str = Field(..., description="base profile start ms"),
-                baseEndMs: str = Field(..., description="base profile end ms"),
-                compareStartMs: str = Field(..., description="compare profile start ms"),
-                compareEndMs: str = Field(..., description="compare profile end ms"),
+                currentStartMs: str = Field(..., description="current profile start ms"),
+                currentEndMs: str = Field(..., description="current profile end ms"),
+                referenceStartMs: str = Field(..., description="reference profile start ms (for comparison)"),
+                referenceEndMs: str = Field(..., description="reference profile end ms (for comparison)"),
                 profileType: str = Field(default="cpu", description="profile type, like 'cpu' 'memory'"),
                 ip: str = Field(None, description="arms service host ip"),
                 thread: str = Field(None, description="arms service thread id"),
                 threadGroup: str = Field(None, description="arms service thread group"),
                 regionId: str = Field(default=...,
-                                       description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
-                                       ),
+                                      description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'")
         ) -> dict:
             """对比两个时间段火焰图的性能变化。
 
@@ -341,10 +340,10 @@ class ArmsToolkit:
             Args:
                 ctx: MCP上下文，用于访问SLS客户端
                 pid: ARMS应用监控服务PID
-                baseStartMs: 火焰图分析的基准开始时间，通过get_current_time工具获取毫秒级时间戳
-                baseEndMs: 火焰图分析的基准结束时间，通过get_current_time工具获取毫秒级时间戳
-                compareStartMs: 火焰图分析的对比开始时间，通过get_current_time工具获取毫秒级时间戳
-                compareEndMs: 火焰图分析的对比结束时间，通过get_current_time工具获取毫秒级时间戳
+                currentStartMs: 火焰图当前（基准）时间段的开始时间戳，通过get_current_time工具获取毫秒级时间戳
+                currentEndMs: 火焰图当前（基准）时间段的结束时间戳，通过get_current_time工具获取毫秒级时间戳
+                referenceStartMs: 火焰图对比时间段（参考时间段）的开始时间戳，通过get_current_time工具获取毫秒级时间戳
+                referenceEndMs: 火焰图对比时间段（参考时间段）的结束时间戳，通过get_current_time工具获取毫秒级时间戳
                 profileType: Profile类型，如'cpu'、'memory'
                 ip: ARMS应用服务主机地址，非必要参数，用于选择所在的服务机器，如有多个填写时以英文逗号","分隔，如'192.168.0.1,192.168.0.2'，不填写默认查询服务所在的所有IP
                 thread: 服务线程名称，非必要参数，用于选择对应线程，如有多个填写时以英文逗号","分隔，如'C1 CompilerThre,C2 CompilerThre'，不填写默认查询服务所有线程
@@ -382,10 +381,10 @@ class ArmsToolkit:
 
                 params: dict[str, Any] = {
                     "serviceName": service_name,
-                    "baseStartMs": baseStartMs,
-                    "baseEndMs": baseEndMs,
-                    "compareStartMs": compareStartMs,
-                    "compareEndMs": compareEndMs,
+                    "startMs": currentStartMs,
+                    "endMs": currentEndMs,
+                    "baseStartMs": referenceStartMs,
+                    "baseEndMs": referenceEndMs,
                     "profileType": profileType,
                     "ip": ip,
                     "language": language,

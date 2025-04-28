@@ -98,10 +98,10 @@ async def test_arms_diff_flame_analysis_success(
     result_data = await tool.run(
         {
             "pid": "test_pid",
-            "baseStartMs": "1609459200000",
-            "baseEndMs": "1609462800000",
-            "compareStartMs": "1609545600000",
-            "compareEndMs": "1609549200000",
+            "startMs": "1609459200000",
+            "endMs": "1609462800000",
+            "baseStartMs": "1609545600000",
+            "baseEndMs": "1609549200000",
             "profileType": "cpu",
             "ip": "127.0.0.1",
             "thread": "main-thread",
