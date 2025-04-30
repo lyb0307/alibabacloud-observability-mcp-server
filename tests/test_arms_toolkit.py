@@ -64,7 +64,52 @@ def mock_request_context():
 @pytest.fixture
 def tool_manager(mcp_server):
     """创建ToolManager实例"""
-    return ArmsToolkit(mcp_server)@pytest.fixture
-def tool_manager(mcp_server):
-    """创建ToolManager实例"""
     return ArmsToolkit(mcp_server)
+
+@pytest.mark.asyncio
+async def test_arms_profile_flame_analysis_success(
+    tool_manager: ArmsToolkit,
+    mcp_server: FastMCP,
+    mock_request_context: Context,
+):
+    """测试arms_profile_flame_analysis成功的情况"""
+    tool = mcp_server._tool_manager.get_tool("arms_profile_flame_analysis")
+    result_data = await tool.run(
+        {
+            "pid": "test_pid",
+            "startMs": "1609459200000",
+            "endMs": "1609545600000",
+            "profileType": "cpu",
+            "ip": "127.0.0.1",
+            "thread": "main-thread",
+            "threadGroup": "default-group",
+            "regionId": "cn-hangzhou",
+        },
+        context=mock_request_context,
+    )
+    assert result_data is not None
+
+@pytest.mark.asyncio
+async def test_arms_diff_flame_analysis_success(
+    tool_manager: ArmsToolkit,
+    mcp_server: FastMCP,
+    mock_request_context: Context,
+):
+    """测试arms_diff_flame_analysis成功的情况"""
+    tool = mcp_server._tool_manager.get_tool("arms_diff_profile_flame_analysis")
+    result_data = await tool.run(
+        {
+            "pid": "test_pid",
+            "startMs": "1609459200000",
+            "endMs": "1609462800000",
+            "baseStartMs": "1609545600000",
+            "baseEndMs": "1609549200000",
+            "profileType": "cpu",
+            "ip": "127.0.0.1",
+            "thread": "main-thread",
+            "threadGroup": "default-group",
+            "regionId": "cn-hangzhou",
+        },
+        context=mock_request_context,
+    )
+    assert result_data is not None
