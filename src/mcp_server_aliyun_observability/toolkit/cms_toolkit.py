@@ -62,7 +62,7 @@ class CMSToolkit:
             ## 功能概述
 
             该工具可以获取CMS中的告警事件信息，并对告警事件进行基本分析
-            在告警规则维度进行分析，给出高频出现的告警规则和对应的告警规则内容信息rule_query信息，并对每一条告警规则给出详细的建议和调整措施
+            在告警规则维度进行分析，给出高频出现的告警规则和对应的告警规则内容信息rule_query信息
             在资源维度进行分析，给出高频出现的资源的信息
             对返回的数据进行总结分析，根据告警规则和资源维度的信息给出简单的告警规则调整建议
 
@@ -84,7 +84,6 @@ class CMSToolkit:
             3. 触发告警事件的规则占比主要有
                 a. 空置率检测可用有xx条: 占比xxx。
                    告警规则为："{"duration":60,"expr":"sum(namedprocess_namegroup_memory_used_ratio{} * 100) by (instance, comm, user, pid) > 15","type":"PROMQL_QUERY"}"
-                   调整建议：告警规则的阈值设置为15可能过低，导致频繁触发告警，影响运维效率。","同一实例（52.221.196.22:9256）上两个不同的PID（3193178 和 3196572）都触发了相同的告警，表明可能存在重复告警的问题。
                 b. 集群cloud-controller-manager服务不可用有xx条: 占比xxx。
                    告警规则为："duration":60,"expr":"((sum(up{job="ack-scheduler"}) <= 0) or (absent(sum(up{job="ack-scheduler"})))) > 0","type":"PROMQL_QUERY"
             4. 触发告警事件的资源占比主要有
@@ -147,7 +146,7 @@ class CMSToolkit:
 
             # 获取告警事件按照告警规则维度的信息
             request: GetLogsRequest = GetLogsRequest(
-                query="type:alert | set session mode=scan; SELECT source as rule_id, subject, json_extract_scalar(data, '$.rule.query') as rule_query, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (rule_id, subject,rule_query) ORDER BY percentage DESC limit 10",
+                query="type:alert | set session mode=scan; SELECT source as rule_id, subject as rule_name, json_extract_scalar(data, '$.rule.query') as rule_query, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (rule_id, rule_name,rule_query) ORDER BY percentage DESC limit 10",
                 from_=fromTimestampInSeconds,
                 to=toTimestampInSeconds,
             )
@@ -159,7 +158,7 @@ class CMSToolkit:
 
             # 获取告警事件按照资源维度的信息
             request: GetLogsRequest = GetLogsRequest(
-                query="type:alert | set session mode=scan;  SELECT json_extract(resource, '$.entity') as entity, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (entity) ORDER BY count DESC limit 100",
+                query="type:alert | set session mode=scan;  SELECT json_extract(resource, '$.entity') as entity, COUNT(*) AS count, COUNT(*) * 100.0 / (SELECT COUNT(*) FROM log) AS percentage FROM log GROUP BY (entity) ORDER BY count DESC limit 10",
                 from_=fromTimestampInSeconds,
                 to=toTimestampInSeconds,
             )
@@ -337,7 +336,7 @@ class CMSToolkit:
                 ].with_region("cn-shanghai")
                 request: CallAiToolsRequest = CallAiToolsRequest()
                 request.tool_name = "text_to_promql"
-                request.regionId = regionId
+                request.region_id = regionId
                 params: dict[str, Any] = {
                     "project": project,
                     "metricstore": metricStore,
@@ -537,7 +536,7 @@ situation -> 表示某个告警的现状，具体的字段含义如下
             }
         ]
     }
-}', '<SYSTEM_INFO>', query) |sort cnt desc | limit 10
+}', '<SYSTEM_INFO>', query) |sort cnt desc | limit 5
 | extend response = http_call(
         'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
         'POST',
