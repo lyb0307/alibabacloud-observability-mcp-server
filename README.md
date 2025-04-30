@@ -36,6 +36,8 @@
 | `arms_search_apps` | 根据应用名称搜索ARMS应用 | `appNameQuery`: 应用名称查询字符串（必需）<br>`regionId`: 阿里云区域ID（必需，格式：'cn-hangzhou'）<br>`pageSize`: 每页结果数量（默认：20，范围：1-100）<br>`pageNumber`: 页码（默认：1） | - 用于查找特定名称的应用<br>- 用于获取其他ARMS操作所需的应用PID<br>- 使用合理的分页参数优化查询结果<br>- 查看用户拥有的应用列表 |  
 | `arms_generate_trace_query` | 根据自然语言问题生成ARMS追踪数据的SLS查询 | `user_id`: 阿里云账户ID（必需）<br>`pid`: 应用PID（必需）<br>`region_id`: 阿里云区域ID（必需）<br>`question`: 关于追踪的自然语言问题（必需） | - 用于查询应用的追踪信息<br>- 分析应用性能问题<br>- 跟踪特定请求的执行路径<br>- 分析服务调用关系<br>- 集成了自动重试机制处理瞬态错误 |  
 | `arms_get_application_info` | 获取特定ARMS应用的详细信息 | `pid`: 应用PID（必需）<br>`regionId`: 阿里云区域ID（必需） | - 当用户明确请求应用信息时使用<br>- 确定应用的开发语言<br>- 在执行其他操作前先获取应用基本信息 |  
+| `arms_profile_flame_analysis` | 分析ARMS应用火焰图性能热点 | `pid`: 应用PID（必需）<br>`startMs`: 分析开始时间戳（必需）<br>`endMs`: 分析结束时间戳（必需）<br>`profileType`: 分析类型，如'cpu'、'memory'（默认：'cpu'）<br>`ip`: 服务主机IP（可选）<br>`thread`: 线程ID（可选）<br>`threadGroup`: 线程组（可选）<br>`regionId`: 阿里云区域ID（必需） | - 用于分析应用性能热点问题<br>- 支持CPU和内存类型的性能分析<br>- 可筛选特定IP、线程或线程组<br>- 适用于Java和Go应用 |
+| `arms_diff_profile_flame_analysis` | 对比不同时间段的火焰图性能变化 | `pid`: 应用PID（必需）<br>`currentStartMs`: 当前时间段开始时间戳（必需）<br>`currentEndMs`: 当前时间段结束时间戳（必需）<br>`referenceStartMs`: 参考时间段开始时间戳（必需）<br>`referenceEndMs`: 参考时间段结束时间戳（必需）<br>`profileType`: 分析类型，如'cpu'、'memory'（默认：'cpu'）<br>`ip`: 服务主机IP（可选）<br>`thread`: 线程ID（可选）<br>`threadGroup`: 线程组（可选）<br>`regionId`: 阿里云区域ID（必需） | - 用于发布前后性能对比<br>- 分析性能优化效果<br>- 识别性能退化点<br>- 支持CPU和内存类型的性能对比<br>- 适用于Java和Go应用 |
 
 ##### 指标相关
 
