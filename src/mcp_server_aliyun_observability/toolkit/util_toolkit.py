@@ -3,6 +3,8 @@ from datetime import datetime
 
 from mcp.server.fastmcp import Context, FastMCP
 
+from mcp_server_aliyun_observability import utils
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,3 +53,15 @@ class UtilToolkit:
                     {"RegionName": "华南3（广州）", "RegionId": "cn-guangzhou"},  
                     {"RegionName": "西南1（成都）", "RegionId": "cn-chengdu"},  
                 ]
+            
+        @self.server.tool()
+        def sls_get_current_time(ctx: Context) -> dict:
+            """获取当前时间。
+
+            ## 功能概述
+            1. 获取当前时间，会返回当前时间字符串和当前时间戳(毫秒)
+
+            ## 使用场景
+            1. 只有当无法从聊天记录里面获取到当前时间时候才可以调用该工具
+            """
+            return utils.get_current_time()

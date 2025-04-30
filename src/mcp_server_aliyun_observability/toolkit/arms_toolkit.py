@@ -34,15 +34,15 @@ class ArmsToolkit:
         @self.server.tool()
         def arms_search_apps(
             ctx: Context,
-            app_name_query: str = Field(..., description="app name query"),
-            region_id: str = Field(
+            appNameQuery: str = Field(..., description="app name query"),
+            regionId: str = Field(
                 ...,
                 description="region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
             ),
-            page_size: int = Field(
+            pageSize: int = Field(
                 20, description="page size,max is 100", ge=1, le=100
             ),
-            page_number: int = Field(1, description="page number,default is 1", ge=1),
+            pageNumber: int = Field(1, description="page number,default is 1", ge=1),
         ) -> list[dict[str, Any]]:
             """搜索ARMS应用。
 
@@ -88,10 +88,10 @@ class ArmsToolkit:
                 "arms_client"
             ].with_region(region_id)
             request: SearchTraceAppByPageRequest = SearchTraceAppByPageRequest(
-                trace_app_name=app_name_query,
-                region_id=region_id,
-                page_size=page_size,
-                page_number=page_number,
+                trace_app_name=appNameQuery,
+                region_id=regionId,
+                page_size=pageSize,
+                page_number=pageNumber,
             )
             response: SearchTraceAppByPageResponse = (
                 arms_client.search_trace_app_by_page(request)
@@ -202,11 +202,12 @@ class ArmsToolkit:
                 ctx, prompt, data["project"], data["log_store"], region_id
             )
             return {
-                "sls_query": sls_text_to_query,
+                "sls_query": sls_text_to_query["data"],
+                "requestId": sls_text_to_query["requestId"],
                 "project": data["project"],
                 "log_store": data["log_store"],
             }
-
+          
         @self.server.tool()
         def arms_profile_flame_analysis(
                 ctx: Context,
@@ -409,3 +410,37 @@ class ArmsToolkit:
             except Exception as e:
                 logger.error(f"调用差分火焰图性能变化分析工具失败: {str(e)}")
                 raise
+
+        @self.server.tool()
+        def arms_get_application_info(ctx: Context,
+                                      pid: str = Field(..., description="pid,the pid of the app"),
+                                      regionId: str = Field(...,
+                                        description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
+                                      ),
+                                      ) -> dict:
+            """
+            根据 PID获取具体某个应用的信息，
+            ## 功能概述
+            1. 获取ARMS应用信息，会返回应用的 PID，AppName,开发语言类型比如 java,python 等
+            
+            ## 使用场景
+            1. 当用户明确提出要查询某个应用的信息时，可以调用该工具
+            2. 有场景需要获取应用的开发语言类型，可以调用该工具
+            """
+            arms_client: ArmsClient = ctx.request_context.lifespan_context[
+                "arms_client"
+            ].with_region(regionId)
+            request: GetTraceAppRequest = GetTraceAppRequest(
+                pid=pid,
+                region_id=regionId,
+            )
+            response: GetTraceAppResponse = arms_client.get_trace_app(request)
+            if response.body:
+                trace_app: GetTraceAppResponseBodyTraceApp = response.body.trace_app
+                return {
+                    "pid": trace_app.pid,
+                    "app_name": trace_app.app_name,
+                    "language": trace_app.language,
+                }
+            else:
+                return "没有找到应用信息"

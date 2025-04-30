@@ -8,7 +8,9 @@ from mcp.shared.context import RequestContext
 
 from mcp_server_aliyun_observability.server import create_lifespan
 from mcp_server_aliyun_observability.toolkit.arms_toolkit import ArmsToolkit
-from mcp_server_aliyun_observability.utils import (CredentialWrapper, ArmsClientWrapper, SLSClientWrapper)
+from mcp_server_aliyun_observability.utils import (ArmsClientWrapper,
+                                                   CredentialWrapper,
+                                                   SLSClientWrapper)
 
 dotenv.load_dotenv()
 
