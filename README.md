@@ -19,43 +19,29 @@
 ### 常见问题
 可以查看 [FAQ.md](./FAQ.md)
 
-##### 场景举例
+### 工具列表
+#### 日志相关
+| 工具名称 | 用途 | 关键参数 | 最佳实践 |  
+|---------|------|---------|---------|  
+| `sls_list_projects` | 列出SLS项目，支持模糊搜索和分页 | `projectName`：项目名称（可选，模糊搜索）<br>`limit`：返回项目数量上限（默认50，范围1-100）<br>`regionId`：阿里云区域ID | - 在不确定可用项目时，首先使用此工具<br>- 使用合理的`limit`值避免返回过多结果 |  
+| `sls_list_logstores` | 列出项目内的日志存储，支持名称模糊搜索 | `project`：SLS项目名称（必需）<br>`logStore`：日志存储名称（可选，模糊搜索）<br>`limit`：返回结果数量上限（默认10）<br>`isMetricStore`：是否筛选指标存储<br>`logStoreType`：日志存储类型<br>`regionId`：阿里云区域ID | - 确定项目后使用此工具查找相关日志存储<br>- 可通过`logStoreType`筛选特定类型日志存储 |  
+| `sls_describe_logstore` | 检索日志存储的结构和索引信息 | `project`：SLS项目名称（必需）<br>`logStore`：SLS日志存储名称（必需）<br>`regionId`：阿里云区域ID | - 在查询前使用此工具了解可用字段及其类型<br>- 检查所需字段是否启用了索引 |  
+| `sls_execute_sql_query` | 在指定时间范围内对日志存储执行SQL查询 | `project`：SLS项目名称（必需）<br>`logStore`：SLS日志存储名称（必需）<br>`query`：SQL查询语句（必需）<br>`fromTimestampInSeconds`：查询开始时间戳（必需）<br>`toTimestampInSeconds`：查询结束时间戳（必需）<br>`limit`：返回结果数量上限（默认10）<br>`regionId`：阿里云区域ID | - 使用适当的时间范围优化查询性能<br>- 限制返回结果数量避免获取过多数据 |  
+| `sls_translate_text_to_sql_query` | 将自然语言描述转换为SLS SQL查询语句 | `text`：查询的自然语言描述（必需）<br>`project`：SLS项目名称（必需）<br>`logStore`：SLS日志存储名称（必需）<br>`regionId`：阿里云区域ID | - 适用于不熟悉SQL语法的用户<br>- 对于复杂查询，可能需要优化生成的SQL |  
+| `sls_diagnose_query` | 诊断SLS查询问题，提供失败原因分析 | `query`：待诊断的SLS查询（必需）<br>`errorMessage`：查询失败的错误信息（必需）<br>`project`：SLS项目名称（必需）<br>`logStore`：SLS日志存储名称（必需）<br>`regionId`：阿里云区域ID | - 查询失败时使用此工具了解根本原因<br>- 根据诊断建议修改查询语句 |  
 
-- 场景一: 快速查询某个 logstore 相关结构
-    - 使用工具:
-        - `sls_list_logstores`
-        - `sls_describe_logstore`
-    ![image](./images/search_log_store.png)
+##### 应用相关
+| 工具名称 | 用途 | 关键参数 | 最佳实践 |  
+|---------|------|---------|---------|  
+| `arms_search_apps` | 根据应用名称搜索ARMS应用 | `appNameQuery`: 应用名称查询字符串（必需）<br>`regionId`: 阿里云区域ID（必需，格式：'cn-hangzhou'）<br>`pageSize`: 每页结果数量（默认：20，范围：1-100）<br>`pageNumber`: 页码（默认：1） | - 用于查找特定名称的应用<br>- 用于获取其他ARMS操作所需的应用PID<br>- 使用合理的分页参数优化查询结果<br>- 查看用户拥有的应用列表 |  
+| `arms_generate_trace_query` | 根据自然语言问题生成ARMS追踪数据的SLS查询 | `user_id`: 阿里云账户ID（必需）<br>`pid`: 应用PID（必需）<br>`region_id`: 阿里云区域ID（必需）<br>`question`: 关于追踪的自然语言问题（必需） | - 用于查询应用的追踪信息<br>- 分析应用性能问题<br>- 跟踪特定请求的执行路径<br>- 分析服务调用关系<br>- 集成了自动重试机制处理瞬态错误 |  
+| `arms_get_application_info` | 获取特定ARMS应用的详细信息 | `pid`: 应用PID（必需）<br>`regionId`: 阿里云区域ID（必需） | - 当用户明确请求应用信息时使用<br>- 确定应用的开发语言<br>- 在执行其他操作前先获取应用基本信息 |  
 
+##### 指标相关
 
-- 场景二: 模糊查询最近一天某个 logstore下面访问量最高的应用是什么
-    - 分析:
-        - 需要判断 logstore 是否存在
-        - 获取 logstore 相关结构
-        - 根据要求生成查询语句(对于语句用户可确认修改)
-        - 执行查询语句
-        - 根据查询结果生成响应
-    - 使用工具:
-        - `sls_list_logstores`
-        - `sls_describe_logstore`
-        - `sls_translate_natural_language_to_query`
-        - `sls_execute_query`
-    ![image](./images/fuzzy_search_and_get_logs.png)
-
-    
-- 场景三: 查询 ARMS 某个应用下面响应最慢的几条 Trace
-    - 分析:
-        - 需要判断应用是否存在
-        - 获取应用相关结构
-        - 根据要求生成查询语句(对于语句用户可确认修改)
-        - 执行查询语句
-        - 根据查询结果生成响应
-    - 使用工具:
-        - `arms_search_apps`
-        - `arms_generate_trace_query`
-        - `sls_translate_natural_language_to_query`
-        - `sls_execute_query`
-    ![image](./images/find_slowest_trace.png)
+| 工具名称 | 用途 | 关键参数 | 最佳实践 |  
+|---------|------|---------|---------|  
+| `cms_translate_text_to_promql` | 将自然语言描述转换为PromQL查询语句 | `text`: 要转换的自然语言文本（必需）<br>`project`: SLS项目名称（必需）<br>`metricStore`: SLS指标存储名称（必需）<br>`regionId`: 阿里云区域ID（必需） | - 提供清晰、具体的指标描述<br>- 如已知，可在描述中提及特定的指标名称、标签或操作<br>- 排除项目或指标存储名称本身<br>- 检查并优化生成的查询以提高准确性和性能 |
 
 
 ### 权限要求
