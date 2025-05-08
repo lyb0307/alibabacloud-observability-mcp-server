@@ -448,8 +448,8 @@ class ArmsToolkit:
         @self.server.tool()
         def arms_trace_quality_analysis(ctx: Context,
                 traceId: str = Field(..., description="traceId"),
-                startMs: str = Field(..., description="start time (ms) for trace query"),
-                endMs: str = Field(..., description="end time (ms) for trace query"),                                      
+                startMs: int = Field(..., description="start time (ms) for trace query"),
+                endMs: int = Field(..., description="end time (ms) for trace query"),
                 regionId: str = Field(default=...,
                                       description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'")
         ) -> dict:
@@ -508,8 +508,8 @@ class ArmsToolkit:
         @self.server.tool()
         def arms_slow_trace_analysis(ctx: Context,
                                      traceId: str = Field(..., description="traceId"),
-                                     startMs: str = Field(..., description="start time (ms) for trace query"),
-                                     endMs: str = Field(..., description="end time (ms) for trace query"),
+                                     startMs: int = Field(..., description="start time (ms) for trace query"),
+                                     endMs: int = Field(..., description="end time (ms) for trace query"),
                                      regionId: str = Field(default=...,
                                                            description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'")
                                      ) -> dict:
@@ -571,8 +571,8 @@ class ArmsToolkit:
         @self.server.tool()
         def arms_error_trace_analysis(ctx: Context,
                                      traceId: str = Field(..., description="traceId"),
-                                     startMs: str = Field(..., description="start time (ms) for trace query"),
-                                     endMs: str = Field(..., description="end time (ms) for trace query"),
+                                     startMs: int = Field(..., description="start time (ms) for trace query"),
+                                     endMs: int = Field(..., description="end time (ms) for trace query"),
                                      regionId: str = Field(default=...,
                                                            description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'")
                                      ) -> dict:

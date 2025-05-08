@@ -125,8 +125,8 @@ async def test_arms_trace_quality_analysis(
     result_data = await tool.run(
         {
             "traceId": "test_trace_id",
-            "startMs": "1746686989000",
-            "endMs": "1746690589507",
+            "startMs": 1746686989000,
+            "endMs": 1746690589507,
             "regionId": "cn-hangzhou",
         },
         context=mock_request_context,
@@ -144,8 +144,8 @@ async def test_arms_slow_trace_analysis(
     result_data = await tool.run(
         {
             "traceId": "test_trace_id",
-            "startMs": "1746686989000",
-            "endMs": "1746690589507",
+            "startMs": 1746686989000,
+            "endMs": 1746690589507,
             "regionId": "cn-hangzhou",
         },
         context=mock_request_context,
@@ -163,8 +163,8 @@ async def test_arms_error_trace_analysis(
     result_data = await tool.run(
         {
             "traceId": "test_trace_id",
-            "startMs": "1746686989000",
-            "endMs": "1746690589507",
+            "startMs": 1746686989000,
+            "endMs": 1746690589507,
             "regionId": "cn-hangzhou",
         },
         context=mock_request_context,
