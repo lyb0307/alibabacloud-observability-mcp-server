@@ -120,7 +120,7 @@ async def test_arms_trace_quality_analysis(
     mcp_server: FastMCP,
     mock_request_context: Context,
 ):
-    """测试trace_struct_analysis成功的情况"""
+    """测试arms_trace_quality_analysis成功的情况"""
     tool = mcp_server._tool_manager.get_tool("arms_trace_quality_analysis")
     result_data = await tool.run(
         {
@@ -139,7 +139,7 @@ async def test_arms_slow_trace_analysis(
     mcp_server: FastMCP,
     mock_request_context: Context,
 ):
-    """测试trace_struct_analysis成功的情况"""
+    """测试arms_slow_trace_analysis成功的情况"""
     tool = mcp_server._tool_manager.get_tool("arms_slow_trace_analysis")
     result_data = await tool.run(
         {
@@ -158,7 +158,7 @@ async def test_arms_error_trace_analysis(
     mcp_server: FastMCP,
     mock_request_context: Context,
 ):
-    """测试trace_struct_analysis成功的情况"""
+    """测试arms_error_trace_analysis成功的情况"""
     tool = mcp_server._tool_manager.get_tool("arms_error_trace_analysis")
     result_data = await tool.run(
         {
