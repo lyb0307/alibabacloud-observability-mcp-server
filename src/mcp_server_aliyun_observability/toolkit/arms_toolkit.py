@@ -86,7 +86,7 @@ class ArmsToolkit:
             """
             arms_client: ArmsClient = ctx.request_context.lifespan_context[
                 "arms_client"
-            ].with_region(region_id)
+            ].with_region(regionId)
             request: SearchTraceAppByPageRequest = SearchTraceAppByPageRequest(
                 trace_app_name=appNameQuery,
                 region_id=regionId,
