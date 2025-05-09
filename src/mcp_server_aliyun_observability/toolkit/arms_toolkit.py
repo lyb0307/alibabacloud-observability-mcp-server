@@ -444,3 +444,189 @@ class ArmsToolkit:
                 }
             else:
                 return "没有找到应用信息"
+        
+        @self.server.tool()
+        def arms_trace_quality_analysis(ctx: Context,
+                traceId: str = Field(..., description="traceId"),
+                startMs: int = Field(..., description="start time (ms) for trace query. unit is millisecond, should be unix timestamp, only number, no other characters"),
+                endMs: int = Field(..., description="end time (ms) for trace query. unit is millisecond, should be unix timestamp, only number, no other characters"),
+                regionId: str = Field(default=...,
+                                      description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'")
+        ) -> dict:
+            """Trace 质量检测
+
+            ## 功能概述
+            识别指定 traceId 的 Trace 是否存在完整性问题（断链）和性能问题（错慢调用）
+
+            ## 使用场景
+
+            - 检测调用链是否存在问题
+
+            ## 查询示例
+
+            - "帮我分析调用链"
+
+            Args:
+                ctx: MCP上下文，用于访问SLS客户端
+                traceId: 待分析的 Trace 的 traceId，必要参数
+                startMs: 分析的开始时间，通过get_current_time工具获取毫秒级时间戳
+                endMs: 分析的结束时间，通过get_current_time工具获取毫秒级时间戳
+                regionId: 阿里云区域ID，如'cn-hangzhou'、'cn-shanghai'等
+            """
+            try:
+
+                sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region("cn-shanghai")
+                ai_request: CallAiToolsRequest = CallAiToolsRequest(
+                    tool_name="trace_struct_analysis",
+                    region_id=regionId
+                )
+
+                params: dict[str, Any] = {
+                    "startMs": startMs,
+                    "endMs": endMs,
+                    "traceId": traceId,
+                    "sys.query": f"分析这个trace",
+                }
+
+                ai_request.params = params
+                runtime: util_models.RuntimeOptions = util_models.RuntimeOptions(read_timeout=60000, connect_timeout=60000)
+
+                tool_response: CallAiToolsResponse = sls_client.call_ai_tools_with_options(request=ai_request, headers={}, runtime=runtime)
+                data = tool_response.body
+
+                if "------answer------\n" in data:
+                    data = data.split("------answer------\n")[1]
+
+                return {
+                    "data": data
+                }
+
+            except Exception as e:
+                logger.error(f"调用Trace质量检测工具失败: {str(e)}")
+                raise
+
+        @self.server.tool()
+        def arms_slow_trace_analysis(ctx: Context,
+                                     traceId: str = Field(..., description="traceId"),
+                                     startMs: int = Field(..., description="start time (ms) for trace query. unit is millisecond, should be unix timestamp, only number, no other characters"),
+                                     endMs: int = Field(..., description="end time (ms) for trace query. unit is millisecond, should be unix timestamp, only number, no other characters"),
+                                     regionId: str = Field(default=...,
+                                                           description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'")
+                                     ) -> dict:
+            """深入分析 Trace 慢调用根因
+
+            ## 功能概述
+
+            针对 Trace 中的慢调用进行诊断分析，输出包含概述、根因、影响范围及解决方案的诊断报告。
+
+            ## 使用场景
+
+            - 性能问题定位和修复
+
+            ## 查询示例
+
+            - "请分析 ${traceId} 这个 trace 慢的原因"
+
+            Args:
+                ctx: MCP上下文，用于访问SLS客户端
+                traceId: 待分析的Trace的 traceId，必要参数
+                startMs: 分析的开始时间，通过get_current_time工具获取毫秒级时间戳
+                endMs: 分析的结束时间，通过get_current_time工具获取毫秒级时间戳
+                regionId: 阿里云区域ID，如'cn-hangzhou'、'cn-shanghai'等
+            """
+            try:
+
+                sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region("cn-shanghai")
+                ai_request: CallAiToolsRequest = CallAiToolsRequest(
+                    tool_name="trace_slow_analysis",
+                    region_id=regionId
+                )
+
+                params: dict[str, Any] = {
+                    "startMs": startMs,
+                    "endMs": endMs,
+                    "traceId": traceId,
+                    "sys.query": f"深入分析慢调用根因",
+                }
+
+                ai_request.params = params
+                runtime: util_models.RuntimeOptions = util_models.RuntimeOptions(read_timeout=60000,
+                                                                                 connect_timeout=60000)
+
+                tool_response: CallAiToolsResponse = sls_client.call_ai_tools_with_options(request=ai_request,
+                                                                                           headers={}, runtime=runtime)
+                data = tool_response.body
+
+                if "------answer------\n" in data:
+                    data = data.split("------answer------\n")[1]
+
+                return {
+                    "data": data
+                }
+
+            except Exception as e:
+                logger.error(f"调用Trace慢调用分析工具失败: {str(e)}")
+                raise
+
+        @self.server.tool()
+        def arms_error_trace_analysis(ctx: Context,
+                                     traceId: str = Field(..., description="traceId"),
+                                     startMs: int = Field(..., description="start time (ms) for trace query. unit is millisecond, should be unix timestamp, only number, no other characters"),
+                                     endMs: int = Field(..., description="end time (ms) for trace query. unit is millisecond, should be unix timestamp, only number, no other characters"),
+                                     regionId: str = Field(default=...,
+                                                           description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'")
+                                     ) -> dict:
+            """深入分析 Trace 错误根因
+
+            ## 功能概述
+
+            针对 Trace 中的错误调用进行深入诊断分析，输出包含概述、根因、影响范围及解决方案的错误诊断报告。
+
+            ## 使用场景
+
+            - 性能问题定位和修复
+
+            ## 查询示例
+
+            - "请分析 ${traceId} 这个 trace 发生错误的原因"
+
+            Args:
+                ctx: MCP上下文，用于访问SLS客户端
+                traceId: 待分析的Trace的 traceId，必要参数
+                startMs: 分析的开始时间，通过get_current_time工具获取毫秒级时间戳
+                endMs: 分析的结束时间，通过get_current_time工具获取毫秒级时间戳
+                regionId: 阿里云区域ID，如'cn-hangzhou'、'cn-shanghai'等
+            """
+            try:
+
+                sls_client: Client = ctx.request_context.lifespan_context["sls_client"].with_region("cn-shanghai")
+                ai_request: CallAiToolsRequest = CallAiToolsRequest(
+                    tool_name="trace_error_analysis",
+                    region_id=regionId
+                )
+
+                params: dict[str, Any] = {
+                    "startMs": startMs,
+                    "endMs": endMs,
+                    "traceId": traceId,
+                    "sys.query": f"深入分析错误根因",
+                }
+
+                ai_request.params = params
+                runtime: util_models.RuntimeOptions = util_models.RuntimeOptions(read_timeout=60000,
+                                                                                 connect_timeout=60000)
+
+                tool_response: CallAiToolsResponse = sls_client.call_ai_tools_with_options(request=ai_request,
+                                                                                           headers={}, runtime=runtime)
+                data = tool_response.body
+
+                if "------answer------\n" in data:
+                    data = data.split("------answer------\n")[1]
+
+                return {
+                    "data": data
+                }
+
+            except Exception as e:
+                logger.error(f"调用Trace错误分析工具失败: {str(e)}")
+                raise

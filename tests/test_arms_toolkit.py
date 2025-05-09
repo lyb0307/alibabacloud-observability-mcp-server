@@ -113,3 +113,60 @@ async def test_arms_diff_flame_analysis_success(
         context=mock_request_context,
     )
     assert result_data is not None
+
+@pytest.mark.asyncio
+async def test_arms_trace_quality_analysis(
+    tool_manager: ArmsToolkit,
+    mcp_server: FastMCP,
+    mock_request_context: Context,
+):
+    """测试arms_trace_quality_analysis成功的情况"""
+    tool = mcp_server._tool_manager.get_tool("arms_trace_quality_analysis")
+    result_data = await tool.run(
+        {
+            "traceId": "test_trace_id",
+            "startMs": 1746686989000,
+            "endMs": 1746690589507,
+            "regionId": "cn-hangzhou",
+        },
+        context=mock_request_context,
+    )
+    assert result_data is not None
+
+@pytest.mark.asyncio
+async def test_arms_slow_trace_analysis(
+    tool_manager: ArmsToolkit,
+    mcp_server: FastMCP,
+    mock_request_context: Context,
+):
+    """测试arms_slow_trace_analysis成功的情况"""
+    tool = mcp_server._tool_manager.get_tool("arms_slow_trace_analysis")
+    result_data = await tool.run(
+        {
+            "traceId": "test_trace_id",
+            "startMs": 1746686989000,
+            "endMs": 1746690589507,
+            "regionId": "cn-hangzhou",
+        },
+        context=mock_request_context,
+    )
+    assert result_data is not None
+
+@pytest.mark.asyncio
+async def test_arms_error_trace_analysis(
+    tool_manager: ArmsToolkit,
+    mcp_server: FastMCP,
+    mock_request_context: Context,
+):
+    """测试arms_error_trace_analysis成功的情况"""
+    tool = mcp_server._tool_manager.get_tool("arms_error_trace_analysis")
+    result_data = await tool.run(
+        {
+            "traceId": "test_trace_id",
+            "startMs": 1746686989000,
+            "endMs": 1746690589507,
+            "regionId": "cn-hangzhou",
+        },
+        context=mock_request_context,
+    )
+    assert result_data is not None
