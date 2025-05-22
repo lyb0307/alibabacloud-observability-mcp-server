@@ -1,5 +1,8 @@
 # 版本更新
 
+## 0.2.6
+- 增加 用户私有知识库 RAG 支持，在启动 MCP Server 时，设置可选参数--knowledge-config ./knowledge_config.json，配置文件样例请参见sample/config/knowledge_config.json
+
 ## 0.2.5
 - 增加 ARMS 慢 Trace 分析工具
 
