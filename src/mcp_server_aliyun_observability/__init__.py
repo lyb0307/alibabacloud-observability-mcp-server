@@ -24,13 +24,19 @@ dotenv.load_dotenv()
     required=False,
 )
 @click.option(
+    "--knowledge-config",
+    type=str,
+    help="knowledge config file path",
+    required=False,
+)
+@click.option(
     "--transport", type=str, help="transport type. stdio or sse", default="stdio"
 )
 @click.option("--log-level", type=str, help="log level", default="INFO")
 @click.option("--transport-port", type=int, help="transport port", default=8000)
-def main(access_key_id, access_key_secret, transport, log_level, transport_port):
+def main(access_key_id, access_key_secret, knowledge_config, transport, log_level, transport_port):
     if access_key_id and access_key_secret:
-        credential = CredentialWrapper(access_key_id, access_key_secret)
+        credential = CredentialWrapper(access_key_id, access_key_secret, knowledge_config)
     else:
         credential = None
     server(credential, transport, log_level, transport_port)

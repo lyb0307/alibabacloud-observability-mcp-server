@@ -1,5 +1,8 @@
 import hashlib
 import logging
+import json
+import os.path
+from pathlib import Path
 from datetime import datetime
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar, cast
@@ -19,6 +22,64 @@ from mcp_server_aliyun_observability.api_error import TEQ_EXCEPTION_ERROR
 
 logger = logging.getLogger(__name__)
 
+
+class KnowledgeEndpoint:
+    """外部知识库配置
+    该类用于加载和管理外部知识库的配置，包括全局/Project/Logstore级别的外部知识库 endpoint 配置。
+    其配置优先级：Logstore > Project default > Global default
+    配置文件示例如下：
+    ```json
+    {
+    "default_endpoint": {"uri": "https://api.default.com", "key": "Bearer dataset-***"},
+    "projects": {
+        "project1": {
+            "default_endpoint": {"uri": "https://api.project1.com", "key": "Bearer dataset-***"},
+            "logstore1": {"uri": "https://api.project1.logstore1.com","key": "Bearer dataset-***"},
+            "logstore2": {"uri": "https://api.project1.logstore2.com","key": "Bearer dataset-***"}
+        },
+        "project2": {
+            "logstore3": {"uri": "https://api.project2.logstore3.com","key": "Bearer dataset-***"}
+        }
+    }
+    ```
+    }
+    """
+    def __init__(self, file_path):
+        try:
+            # 将路径转换为绝对路径，支持用户目录（~）和环境变量（如 $HOME）
+            expanded_path = os.path.expandvars(file_path)
+            self.file_path = Path(expanded_path).expanduser().resolve()
+            with open(self.file_path, 'r', encoding='utf-8') as file:
+                self.config = json.load(file)
+                logger.warning(f"已加载外部知识库配置文件 {self.file_path}")
+        except FileNotFoundError:
+            logger.warning(f"外部知识库配置文件 {self.file_path} 不存在")
+        except json.JSONDecodeError as e:
+            logger.warning(f"外部知识库配置 JSON 格式错误: {e}")
+
+        # 全局默认 endpoint
+        self.global_default = self.config.get("default_endpoint", None)
+
+        # 项目配置
+        self.projects = self.config.get("projects", {})
+
+    def get_config(self, project:str, logstore:str) -> str:
+        """获取指定项目和日志仓库的外部知识库 endpoint 配置
+        优先级：logstore > project default > global default
+        :param project: 项目名称
+        :param logstore: 日志仓库名称
+        :return: 外部知识库 endpoint
+        """
+        project_config = self.projects.get(project, None)
+        if project_config is None:
+            return self.global_default
+
+        logstore_config = project_config.get(logstore)
+        if logstore_config is None:
+            return self.project_config.get("default_endpoint", None)
+
+        return logstore_config
+
 class CredentialWrapper:
     """
     A wrapper for aliyun credentials
@@ -26,11 +87,12 @@ class CredentialWrapper:
 
     access_key_id: str
     access_key_secret: str
+    knowledge_config: KnowledgeEndpoint
 
-    def __init__(self, access_key_id: str, access_key_secret: str):
+    def __init__(self, access_key_id: str, access_key_secret: str, knowledge_config: str):
         self.access_key_id = access_key_id
         self.access_key_secret = access_key_secret
-    
+        self.knowledge_config = KnowledgeEndpoint(knowledge_config) if knowledge_config else None
     
     
 class SLSClientWrapper:
@@ -40,7 +102,6 @@ class SLSClientWrapper:
 
     def __init__(self, credential: Optional[CredentialWrapper] = None):
         self.credential = credential
-    
 
     def with_region(
         self, region: str = None, endpoint: Optional[str] = None
@@ -55,6 +116,13 @@ class SLSClientWrapper:
             config = open_api_models.Config(credential=credentialsClient)
         config.endpoint = f"{region}.log.aliyuncs.com"
         return SLSClient(config)
+    
+    def get_knowledge_config(self, project: str, logstore: str) -> str:
+        if self.credential and self.credential.knowledge_config:
+            res = self.credential.knowledge_config.get_config(project, logstore)
+            if "uri" in res and "key" in res:
+                return res
+        return None
 
 
 class ArmsClientWrapper:
@@ -199,9 +267,9 @@ def text_to_sql(
     ctx: Context, text: str, project: str, log_store: str, region_id: str
 ) -> dict[str, Any]:
     try:
-        sls_client: Client = ctx.request_context.lifespan_context[
-            "sls_client"
-        ].with_region("cn-shanghai")
+        sls_client_wrapper = ctx.request_context.lifespan_context["sls_client"]
+        sls_client: Client = sls_client_wrapper.with_region("cn-shanghai")
+        knowledge_config = sls_client_wrapper.get_knowledge_config(project, log_store)
         request: CallAiToolsRequest = CallAiToolsRequest()
         request.tool_name = "text_to_sql"
         request.region_id = region_id
@@ -209,6 +277,8 @@ def text_to_sql(
             "project": project,
             "logstore": log_store,
             "sys.query": append_current_time(text),
+            "external_knowledge_uri": knowledge_config["uri"] if knowledge_config else "",
+            "external_knowledge_key": knowledge_config["key"] if knowledge_config else "",
         }
         request.params = params
         runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
