@@ -491,9 +491,9 @@ class SLSToolkit:
                 region_id: 阿里云区域ID
             """
             try:
-                sls_client: Client = ctx.request_context.lifespan_context[
-                    "sls_client"
-                ].with_region("cn-shanghai")
+                sls_client_wrapper = ctx.request_context.lifespan_context["sls_client"]
+                sls_client: Client = sls_client_wrapper.with_region("cn-shanghai")
+                knowledge_config = sls_client_wrapper.get_knowledge_config(project, logStore)
                 request: CallAiToolsRequest = CallAiToolsRequest()
                 request.tool_name = "diagnosis_sql"
                 request.region_id = regionId
@@ -501,6 +501,8 @@ class SLSToolkit:
                     "project": project,
                     "logstore": logStore,
                     "sys.query": append_current_time(f"帮我诊断下 {query} 的日志查询语句,错误信息为 {errorMessage}"),
+                    "external_knowledge_uri": knowledge_config["uri"] if knowledge_config else "",
+                    "external_knowledge_key": knowledge_config["key"] if knowledge_config else "",
                 }
                 request.params = params
                 runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
