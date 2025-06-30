@@ -77,7 +77,7 @@ class SLSToolkit:
                 default=50, description="limit,max is 100", ge=1, le=100
             ),
             regionId: str = Field(default=..., description="aliyun region id"),
-        ) -> list[dict[str, Any]]:
+        ):
             """列出阿里云日志服务中的所有项目。
 
             ## 功能概述
@@ -120,7 +120,7 @@ class SLSToolkit:
             )
             response: ListProjectResponse = sls_client.list_project(request)
 
-            return{
+            return {
                 "projects": [
                     {
                         "project_name": project.project_name,
