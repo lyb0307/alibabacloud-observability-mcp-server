@@ -23,3 +23,5 @@ build
 .pytest_cache
 **/*.tar.bz2
 uv.lock
+CLAUDE.md
+**.log
