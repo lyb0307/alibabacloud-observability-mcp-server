@@ -35,6 +35,7 @@ def init_server(
     credential: Optional[CredentialWrapper] = None,
     log_level: str = "INFO",
     transport_port: int = 8000,
+    host: str = "0.0.0.0",
 ):
     """initialize the global mcp server instance"""
     mcp_server = FastMCP(
@@ -42,6 +43,7 @@ def init_server(
         lifespan=create_lifespan(credential),
         log_level=log_level,
         port=transport_port,
+        host=host,
     )
     SLSToolkit(mcp_server)
     UtilToolkit(mcp_server)
@@ -55,6 +57,7 @@ def server(
     transport: str = "stdio",
     log_level: str = "INFO",
     transport_port: int = 8000,
+    host: str = "0.0.0.0",
 ):
-    server: FastMCP = init_server(credential, log_level, transport_port)
+    server: FastMCP = init_server(credential, log_level, transport_port, host)
     server.run(transport)

@@ -1,4 +1,3 @@
-import logging
 from typing import Any
 
 from alibabacloud_arms20190808.client import Client as ArmsClient
@@ -15,12 +14,11 @@ from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
+from mcp_server_aliyun_observability.logger import log_error
 from mcp_server_aliyun_observability.utils import (
     get_arms_user_trace_log_store,
     text_to_sql,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class ArmsToolkit:
@@ -306,7 +304,7 @@ class ArmsToolkit:
                 }
 
             except Exception as e:
-                logger.error(f"调用火焰图数据性能热点AI工具失败: {str(e)}")
+                log_error(f"调用火焰图数据性能热点AI工具失败: {str(e)}")
                 raise
 
         @self.server.tool()
@@ -408,7 +406,7 @@ class ArmsToolkit:
                 }
 
             except Exception as e:
-                logger.error(f"调用差分火焰图性能变化分析工具失败: {str(e)}")
+                log_error(f"调用差分火焰图性能变化分析工具失败: {str(e)}")
                 raise
 
         @self.server.tool()
@@ -502,7 +500,7 @@ class ArmsToolkit:
                 }
 
             except Exception as e:
-                logger.error(f"调用Trace质量检测工具失败: {str(e)}")
+                log_error(f"调用Trace质量检测工具失败: {str(e)}")
                 raise
 
         @self.server.tool()
@@ -565,7 +563,7 @@ class ArmsToolkit:
                 }
 
             except Exception as e:
-                logger.error(f"调用Trace慢调用分析工具失败: {str(e)}")
+                log_error(f"调用Trace慢调用分析工具失败: {str(e)}")
                 raise
 
         @self.server.tool()
@@ -628,5 +626,5 @@ class ArmsToolkit:
                 }
 
             except Exception as e:
-                logger.error(f"调用Trace错误分析工具失败: {str(e)}")
+                log_error(f"调用Trace错误分析工具失败: {str(e)}")
                 raise

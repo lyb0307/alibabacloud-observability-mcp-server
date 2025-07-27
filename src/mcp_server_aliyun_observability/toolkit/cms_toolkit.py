@@ -1,4 +1,3 @@
-import logging
 from typing import Any, Callable, Dict, List, Optional, TypeVar, cast
 from functools import wraps
 
@@ -18,10 +17,8 @@ from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
+from mcp_server_aliyun_observability.logger import log_error
 from mcp_server_aliyun_observability.utils import handle_tea_exception
-
-# 配置日志
-logger = logging.getLogger(__name__)
 
 
 class CMSToolkit:
@@ -126,7 +123,7 @@ class CMSToolkit:
                     data = data.split("------answer------\n")[1]
                 return data
             except Exception as e:
-                logger.error(f"调用CMS AI工具失败: {str(e)}")
+                log_error(f"调用CMS AI工具失败: {str(e)}")
                 raise
 
         @self.server.tool()

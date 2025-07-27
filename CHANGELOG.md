@@ -1,4 +1,13 @@
 # 版本更新
+## 0.2.8
+- 增加 streamable-http 支持，可通过 --transport streamable-http 指定
+- 增加 host 参数，可通过 --host 指定 MCP Server 的监听地址
+- 重构日志系统，使用统一的Logger类替换标准logging
+  - 新增自定义MCPLogger类，支持居中显示和富文本格式
+  - 所有toolkit模块统一使用新的日志函数(log_error, log_info等)
+  - 日志文件自动保存到用户目录~/mcp_server_aliyun_observability/，按日期命名
+  - 支持终端彩色输出和文件日志双重记录
+
 ## 0.2.7
 - 修复sls_list_projects 工具返回结果类型错误问题,会导致高版本的MCP出现返回值提取错误
 

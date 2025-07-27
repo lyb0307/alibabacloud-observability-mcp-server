@@ -1,4 +1,3 @@
-import logging
 from typing import Any, Dict, List
 
 from alibabacloud_sls20201230.client import Client
@@ -19,14 +18,12 @@ from pydantic import Field
 from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
                       wait_fixed)
 
+from mcp_server_aliyun_observability.logger import log_error
 from mcp_server_aliyun_observability.utils import (append_current_time,
                                                    get_current_time,
                                                    handle_tea_exception,
                                                    parse_json_keys,
                                                    text_to_sql)
-
-# 配置日志
-logger = logging.getLogger(__name__)
 
 
 class SLSToolkit:
@@ -518,5 +515,5 @@ class SLSToolkit:
                     data = data.split("------answer------\n")[1]
                 return data
             except Exception as e:
-                logger.error(f"调用SLS AI工具失败: {str(e)}")
+                log_error(f"调用SLS AI工具失败: {str(e)}")
                 raise

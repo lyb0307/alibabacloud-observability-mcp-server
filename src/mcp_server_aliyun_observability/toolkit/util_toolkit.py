@@ -1,11 +1,8 @@
-import logging
 from datetime import datetime
 
 from mcp.server.fastmcp import Context, FastMCP
 
 from mcp_server_aliyun_observability import utils
-
-logger = logging.getLogger(__name__)
 
 
 class UtilToolkit:
