@@ -27,6 +27,7 @@ def mcp_server():
             credential=CredentialWrapper(
                 access_key_id=os.getenv("ALIYUN_ACCESS_KEY_ID"),
                 access_key_secret=os.getenv("ALIYUN_ACCESS_KEY_SECRET"),
+                knowledge_config=None
             ),
         ),
     )
@@ -46,6 +47,7 @@ def mock_request_context():
                     credential=CredentialWrapper(
                         access_key_id=os.getenv("ALIYUN_ACCESS_KEY_ID"),
                         access_key_secret=os.getenv("ALIYUN_ACCESS_KEY_SECRET"),
+                        knowledge_config=None
                     ),
                 ),
             },
@@ -86,6 +88,7 @@ async def test_sls_execute_query_success(
             result = {
                 "data": response_body,
     """
+    print(text)
     item = text["data"][0]
     assert item["total"] is not None
     assert text["message"] == "success"
