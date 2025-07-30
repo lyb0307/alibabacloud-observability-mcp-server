@@ -1,4 +1,7 @@
 # 版本更新
+
+## 0.2.9
+- 修复获取logstore时候类型不匹配问题
 ## 0.2.8
 - 增加 streamable-http 支持，可通过 --transport streamable-http 指定
 - 增加 host 参数，可通过 --host 指定 MCP Server 的监听地址
