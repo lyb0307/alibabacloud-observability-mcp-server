@@ -1,29 +1,34 @@
 from typing import Any, Dict, List
 
 from alibabacloud_sls20201230.client import Client
-from alibabacloud_sls20201230.models import (CallAiToolsRequest,
-                                             CallAiToolsResponse,
-                                             GetIndexResponse,
-                                             GetIndexResponseBody,
-                                             GetLogsRequest, GetLogsResponse,
-                                             IndexJsonKey, IndexKey,
-                                             ListLogStoresRequest,
-                                             ListLogStoresResponse,
-                                             ListProjectRequest,
-                                             ListProjectResponse)
+from alibabacloud_sls20201230.models import (
+    CallAiToolsRequest,
+    CallAiToolsResponse,
+    GetIndexResponse,
+    GetIndexResponseBody,
+    GetLogsRequest,
+    GetLogsResponse,
+    IndexJsonKey,
+    IndexKey,
+    ListLogStoresRequest,
+    ListLogStoresResponse,
+    ListProjectRequest,
+    ListProjectResponse,
+)
 from alibabacloud_tea_util import models as util_models
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.fastmcp.prompts import base
 from pydantic import Field
-from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
-                      wait_fixed)
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from mcp_server_aliyun_observability.logger import log_error
-from mcp_server_aliyun_observability.utils import (append_current_time,
-                                                   get_current_time,
-                                                   handle_tea_exception,
-                                                   parse_json_keys,
-                                                   text_to_sql)
+from mcp_server_aliyun_observability.utils import (
+    append_current_time,
+    get_current_time,
+    handle_tea_exception,
+    parse_json_keys,
+    text_to_sql,
+)
 
 
 class SLSToolkit:
@@ -39,37 +44,39 @@ class SLSToolkit:
         self.server = server
         self._register_sls_tools()
         self._register_prompts()
-        
-        
+
     def _register_prompts(self):
         """register sls related prompts functions"""
-        
-        @self.server.prompt(name="sls 日志查询 prompt",description="当用户需要查询 sls 日志时，可以调用该 prompt来获取过程")
+
+        @self.server.prompt(
+            name="sls 日志查询 prompt",
+            description="当用户需要查询 sls 日志时，可以调用该 prompt来获取过程",
+        )
         def query_sls_logs(question: str) -> str:
             """当用户需要查询 sls 日志时，可以调用该 prompt来获取过程"""
             return [
                 base.UserMessage("基于以下问题查询下对应的 sls日志:"),
-                base.UserMessage(
-                    f"问题: {question}"
-                ),
+                base.UserMessage(f"问题: {question}"),
                 base.UserMessage("过程如下:"),
-                base.UserMessage(content="1.首先尝试从上下文提取有效的 project 和 logstore 信息,如果上下文没有提供，请使用 sls_list_projects 和 sls_list_logstores 工具获取"),
-                base.UserMessage(content="2.如果问题里面已经明确包含了查询语句，则直接使用，如果问题里面没有明确包含查询语句，则需要使用 sls_translate_natural_language_to_log_query 工具生成查询语句"),
+                base.UserMessage(
+                    content="1.首先尝试从上下文提取有效的 project 和 logstore 信息,如果上下文没有提供，请使用 sls_list_projects 和 sls_list_logstores 工具获取"
+                ),
+                base.UserMessage(
+                    content="2.如果问题里面已经明确包含了查询语句，则直接使用，如果问题里面没有明确包含查询语句，则需要使用 sls_translate_natural_language_to_log_query 工具生成查询语句"
+                ),
                 base.UserMessage(
                     "3. 最后使用 sls_execute_query 工具执行查询语句，获取查询结果"
                 ),
                 base.UserMessage("3. 返回查询到的日志"),
             ]
-            
+
     def _register_sls_tools(self):
         """register sls related tools functions"""
 
         @self.server.tool()
         def sls_list_projects(
             ctx: Context,
-            projectName: str = Field(
-                None, description="project name,fuzzy search"
-            ),
+            projectName: str = Field(None, description="project name,fuzzy search"),
             limit: int = Field(
                 default=50, description="limit,max is 100", ge=1, le=100
             ),
@@ -123,10 +130,10 @@ class SLSToolkit:
                         "project_name": project.project_name,
                         "description": project.description,
                         "region_id": project.region,
-                }
-                for project in response.body.projects
-            ],
-                "message": f"当前最多支持查询{limit}个项目，未防止返回数据过长，如果需要查询更多项目，您可以提供 project 的关键词来模糊查询"
+                    }
+                    for project in response.body.projects
+                ],
+                "message": f"当前最多支持查询{limit}个项目，未防止返回数据过长，如果需要查询更多项目，您可以提供 project 的关键词来模糊查询",
             }
 
         @self.server.tool()
@@ -139,7 +146,10 @@ class SLSToolkit:
         @handle_tea_exception
         def sls_list_logstores(
             ctx: Context,
-            project: str = Field(..., description="sls project name,must exact match,should not contain chinese characters"),
+            project: str = Field(
+                ...,
+                description="sls project name,must exact match,should not contain chinese characters",
+            ),
             logStore: str = Field(None, description="log store name,fuzzy search"),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
             isMetricStore: bool = Field(
@@ -154,7 +164,7 @@ class SLSToolkit:
                 default=...,
                 description="aliyun region id,region id format like 'xx-xxx',like 'cn-hangzhou'",
             ),
-        ) -> list[str]:
+        ) -> Any:
             """列出SLS项目中的日志库。
 
             ## 功能概述
@@ -191,7 +201,7 @@ class SLSToolkit:
             """
             if isMetricStore:
                 logStoreType = "Metrics"
-                
+
             if project == "":
                 return {
                     "total": 0,
@@ -308,9 +318,13 @@ class SLSToolkit:
             logStore: str = Field(..., description="sls log store name"),
             query: str = Field(..., description="query"),
             fromTimestampInSeconds: int = Field(
-                ..., description="from timestamp,unit is second,should be unix timestamp, only number,no other characters"
+                ...,
+                description="from timestamp,unit is second,should be unix timestamp, only number,no other characters",
             ),
-            toTimestampInSeconds: int = Field(..., description="to timestamp,unit is second,should be unix timestamp, only number,no other characters"),
+            toTimestampInSeconds: int = Field(
+                ...,
+                description="to timestamp,unit is second,should be unix timestamp, only number,no other characters",
+            ),
             limit: int = Field(10, description="limit,max is 100", ge=1, le=100),
             regionId: str = Field(
                 default=...,
@@ -448,7 +462,7 @@ class SLSToolkit:
             Returns:
                 生成的SLS查询语句
             """
-            
+
             return text_to_sql(ctx, text, project, logStore, regionId)
 
         @self.server.tool()
@@ -490,16 +504,24 @@ class SLSToolkit:
             try:
                 sls_client_wrapper = ctx.request_context.lifespan_context["sls_client"]
                 sls_client: Client = sls_client_wrapper.with_region("cn-shanghai")
-                knowledge_config = sls_client_wrapper.get_knowledge_config(project, logStore)
+                knowledge_config = sls_client_wrapper.get_knowledge_config(
+                    project, logStore
+                )
                 request: CallAiToolsRequest = CallAiToolsRequest()
                 request.tool_name = "diagnosis_sql"
                 request.region_id = regionId
                 params: dict[str, Any] = {
                     "project": project,
                     "logstore": logStore,
-                    "sys.query": append_current_time(f"帮我诊断下 {query} 的日志查询语句,错误信息为 {errorMessage}"),
-                    "external_knowledge_uri": knowledge_config["uri"] if knowledge_config else "",
-                    "external_knowledge_key": knowledge_config["key"] if knowledge_config else "",
+                    "sys.query": append_current_time(
+                        f"帮我诊断下 {query} 的日志查询语句,错误信息为 {errorMessage}"
+                    ),
+                    "external_knowledge_uri": knowledge_config["uri"]
+                    if knowledge_config
+                    else "",
+                    "external_knowledge_key": knowledge_config["key"]
+                    if knowledge_config
+                    else "",
                 }
                 request.params = params
                 runtime: util_models.RuntimeOptions = util_models.RuntimeOptions()
