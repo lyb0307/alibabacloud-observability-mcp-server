@@ -90,11 +90,13 @@ class CredentialWrapper:
 
     access_key_id: str
     access_key_secret: str
+    security_token: Optional[str]
     knowledge_config: KnowledgeEndpoint
 
-    def __init__(self, access_key_id: str, access_key_secret: str, knowledge_config: str):
+    def __init__(self, access_key_id: str, access_key_secret: str, knowledge_config: str, security_token: Optional[str] = None):
         self.access_key_id = access_key_id
         self.access_key_secret = access_key_secret
+        self.security_token = security_token
         self.knowledge_config = KnowledgeEndpoint(knowledge_config) if knowledge_config else None
     
     
@@ -114,6 +116,8 @@ class SLSClientWrapper:
                 access_key_id=self.credential.access_key_id,
                 access_key_secret=self.credential.access_key_secret,
             )
+            if self.credential.security_token:
+                config.security_token = self.credential.security_token
         else:
             credentialsClient = CredClient()
             config = open_api_models.Config(credential=credentialsClient)
@@ -142,6 +146,8 @@ class ArmsClientWrapper:
                 access_key_id=self.credential.access_key_id,
                 access_key_secret=self.credential.access_key_secret,
             )
+            if self.credential.security_token:
+                config.security_token = self.credential.security_token
         else:
             credentialsClient = CredClient()
             config = open_api_models.Config(credential=credentialsClient)

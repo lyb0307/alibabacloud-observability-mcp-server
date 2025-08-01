@@ -16,12 +16,21 @@ dotenv.load_dotenv()
     type=str,
     help="aliyun access key id",
     required=False,
+    envvar="ALIYUN_ACCESS_KEY_ID",
 )
 @click.option(
     "--access-key-secret",
     type=str,
     help="aliyun access key secret",
     required=False,
+    envvar="ALIYUN_ACCESS_KEY_SECRET",
+)
+@click.option(
+    "--security-token",
+    type=str,
+    help="aliyun security token (for temporary credentials)",
+    required=False,
+    envvar="ALIYUN_SECURITY_TOKEN",
 )
 @click.option(
     "--knowledge-config",
@@ -41,6 +50,7 @@ dotenv.load_dotenv()
 def main(
     access_key_id,
     access_key_secret,
+    security_token,
     knowledge_config,
     transport,
     log_level,
@@ -49,7 +59,7 @@ def main(
 ):
     if access_key_id and access_key_secret:
         credential = CredentialWrapper(
-            access_key_id, access_key_secret, knowledge_config
+            access_key_id, access_key_secret, knowledge_config, security_token
         )
     else:
         credential = None
