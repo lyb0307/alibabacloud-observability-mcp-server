@@ -24,7 +24,7 @@ def mcp_server():
         name="mcp_aliyun_observability_server",
         lifespan=create_lifespan(
             CredentialWrapper(
-                os.getenv("ALIYUN_ACCESS_KEY_ID"), os.getenv("ALIYUN_ACCESS_KEY_SECRET")
+                os.getenv("ALIBABA_CLOUD_ACCESS_KEY_ID"), os.getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET")
             )
         ),
     )
@@ -42,8 +42,8 @@ def mock_request_context():
             lifespan_context={
                 "cms_client": SLSClientWrapper(
                     CredentialWrapper(
-                        os.getenv("ALIYUN_ACCESS_KEY_ID"),
-                        os.getenv("ALIYUN_ACCESS_KEY_SECRET"),
+                        os.getenv("ALIBABA_CLOUD_ACCESS_KEY_ID"),
+                        os.getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET"),
                     )
                 ),
             },

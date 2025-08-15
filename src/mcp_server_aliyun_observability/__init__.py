@@ -16,21 +16,21 @@ dotenv.load_dotenv()
     type=str,
     help="aliyun access key id",
     required=False,
-    envvar="ALIYUN_ACCESS_KEY_ID",
+    envvar="ALIBABA_CLOUD_ACCESS_KEY_ID",
 )
 @click.option(
     "--access-key-secret",
     type=str,
     help="aliyun access key secret",
     required=False,
-    envvar="ALIYUN_ACCESS_KEY_SECRET",
+    envvar="ALIBABA_CLOUD_ACCESS_KEY_SECRET",
 )
 @click.option(
     "--security-token",
     type=str,
     help="aliyun security token (for temporary credentials)",
     required=False,
-    envvar="ALIYUN_SECURITY_TOKEN",
+    envvar="ALIBABA_CLOUD_SECURITY_TOKEN",
 )
 @click.option(
     "--knowledge-config",
