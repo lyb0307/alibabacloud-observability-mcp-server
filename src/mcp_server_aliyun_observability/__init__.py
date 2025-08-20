@@ -1,12 +1,89 @@
 import os
 import sys
 
+from alibabacloud_credentials.provider import StaticAKCredentialsProvider, EcsRamRoleCredentialsProvider, \
+    RamRoleArnCredentialsProvider, OIDCRoleArnCredentialsProvider, StaticSTSCredentialsProvider
+from alibabacloud_credentials.exceptions import CredentialException
+from alibabacloud_credentials import provider
+
+def _get_credentials_provider(self, config, profile_name):
+        if profile_name is None or profile_name == '':
+            raise CredentialException('invalid profile name')
+
+        profiles = config.get('profiles', [])
+
+        if not profiles:
+            raise CredentialException(f"unable to get profile with '{profile_name}' form cli credentials file.")
+
+        for profile in profiles:
+            if profile.get('name') is not None and profile['name'] == profile_name:
+                mode = profile.get('mode')
+                if mode == "AK":
+                    return StaticAKCredentialsProvider(
+                        access_key_id=profile.get('access_key_id'),
+                        access_key_secret=profile.get('access_key_secret')
+                    )
+                elif mode == "StsToken" or mode == "CloudSSO":
+                    return StaticSTSCredentialsProvider(
+                        access_key_id=profile.get('access_key_id'),
+                        access_key_secret=profile.get('access_key_secret'),
+                        security_token=profile.get('sts_token')
+                    )
+                elif mode == "RamRoleArn":
+                    pre_provider = StaticAKCredentialsProvider(
+                        access_key_id=profile.get('access_key_id'),
+                        access_key_secret=profile.get('access_key_secret')
+                    )
+                    return RamRoleArnCredentialsProvider(
+                        credentials_provider=pre_provider,
+                        role_arn=profile.get('ram_role_arn'),
+                        role_session_name=profile.get('ram_session_name'),
+                        duration_seconds=profile.get('expired_seconds'),
+                        policy=profile.get('policy'),
+                        external_id=profile.get('external_id'),
+                        sts_region_id=profile.get('sts_region'),
+                        enable_vpc=profile.get('enable_vpc'),
+                    )
+                elif mode == "EcsRamRole":
+                    return EcsRamRoleCredentialsProvider(
+                        role_name=profile.get('ram_role_name')
+                    )
+                elif mode == "OIDC":
+                    return OIDCRoleArnCredentialsProvider(
+                        role_arn=profile.get('ram_role_arn'),
+                        oidc_provider_arn=profile.get('oidc_provider_arn'),
+                        oidc_token_file_path=profile.get('oidc_token_file'),
+                        role_session_name=profile.get('role_session_name'),
+                        duration_seconds=profile.get('expired_seconds'),
+                        policy=profile.get('policy'),
+                        sts_region_id=profile.get('sts_region'),
+                        enable_vpc=profile.get('enable_vpc'),
+                    )
+                elif mode == "ChainableRamRoleArn":
+                    previous_provider = self._get_credentials_provider(config, profile.get('source_profile'))
+                    return RamRoleArnCredentialsProvider(
+                        credentials_provider=previous_provider,
+                        role_arn=profile.get('ram_role_arn'),
+                        role_session_name=profile.get('ram_session_name'),
+                        duration_seconds=profile.get('expired_seconds'),
+                        policy=profile.get('policy'),
+                        external_id=profile.get('external_id'),
+                        sts_region_id=profile.get('sts_region'),
+                        enable_vpc=profile.get('enable_vpc'),
+                    )
+                else:
+                    raise CredentialException(f"unsupported profile mode '{mode}' form cli credentials file.")
+
+        raise CredentialException(f"unable to get profile with '{profile_name}' form cli credentials file.")
+
+provider.cli_profile.CLIProfileCredentialsProvider._get_credentials_provider = _get_credentials_provider
+
 import click
 import dotenv
+from typing import Dict
 
 from mcp_server_aliyun_observability.server import server
 from mcp_server_aliyun_observability.utils import CredentialWrapper
-
 dotenv.load_dotenv()
 
 
@@ -57,10 +134,12 @@ def main(
     transport_port,
     host,
 ):
+    
     if access_key_id and access_key_secret:
         credential = CredentialWrapper(
             access_key_id, access_key_secret, knowledge_config, security_token
         )
     else:
         credential = None
+
     server(credential, transport, log_level, transport_port, host=host)

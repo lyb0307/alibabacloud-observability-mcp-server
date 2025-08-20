@@ -164,7 +164,8 @@ python -m mcp_server_aliyun_observability --transport sse --access-key-id <your_
       ],
       "env": {
         "ALIBABA_CLOUD_ACCESS_KEY_ID": "<your_access_key_id>",
-        "ALIBABA_CLOUD_ACCESS_KEY_SECRET": "<your_access_key_secret>"
+        "ALIBABA_CLOUD_ACCESS_KEY_SECRET": "<your_access_key_secret>",
+        "ALIBABA_CLOUD_SECURITY_TOKEN": "<your_security_token>"  // 如果使用了STS Token，则需要设置此环境变量
       }
     }
   }
